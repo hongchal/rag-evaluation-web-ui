@@ -1,0 +1,46 @@
+# Web Framework
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
+
+# Database
+sqlalchemy==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+
+# Vector Database
+qdrant-client==1.12.1
+
+# Embeddings
+FlagEmbedding==1.2.11
+torch==2.5.1
+tiktoken==0.8.0
+sentence-transformers==3.3.1
+
+# Document Processing
+PyPDF2==3.0.1
+pdfplumber==0.11.4
+python-docx==1.1.2
+
+# Text Processing
+langchain-text-splitters==0.3.2
+
+# Configuration
+python-dotenv==1.0.1
+pydantic==2.10.3
+pydantic-settings==2.6.1
+
+# Logging
+structlog==24.4.0
+
+# Utilities
+httpx==0.27.2
+aiofiles==24.1.0
+
+# CORS
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# SSE Support
+sse-starlette==2.1.3
+
