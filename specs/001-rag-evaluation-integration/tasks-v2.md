@@ -13,7 +13,7 @@
 ### Phase 1: Setup & Dependencies
 필수 의존성 설치
 
-- [ ] **SETUP-1**: requirements.txt 업데이트
+- [X] **SETUP-1**: requirements.txt 업데이트
   - Files: `backend/requirements.txt`
   - Description: 
     - FlagEmbedding>=1.2.0 (BGE-M3)
@@ -27,7 +27,7 @@
     - pandas, numpy
   - Dependencies: None
 
-- [ ] **SETUP-2**: Backend 디렉토리 구조 생성
+- [X] **SETUP-2**: Backend 디렉토리 구조 생성
   - Files: 디렉토리 생성
   - Description:
     - `backend/app/evaluation/`
@@ -38,7 +38,7 @@
     - `backend/app/schemas/`
   - Dependencies: None
 
-- [ ] **SETUP-3**: 환경 변수 추가
+- [X] **SETUP-3**: 환경 변수 추가
   - Files: `backend/env.example`
   - Description:
     - ANTHROPIC_API_KEY
@@ -48,35 +48,35 @@
 ### Phase 2: Evaluation System Migration
 tkai-agents 코드 마이그레이션
 
-- [ ] **EVAL-1**: evaluation 모듈 복사 및 수정
+- [X] **EVAL-1**: evaluation 모듈 복사 및 수정
   - Files: `backend/app/evaluation/`
   - Description:
     - `/Users/chohongcheol/tkai-agents/apps/rag/src/evaluation/` → `backend/app/evaluation/`
     - Import 경로 수정 (src.* → app.*)
   - Dependencies: SETUP-2
 
-- [ ] **EVAL-2**: chunking 모듈 복사 및 수정
+- [X] **EVAL-2**: chunking 모듈 복사 및 수정
   - Files: `backend/app/chunking/`
   - Description:
     - `/Users/chohongcheol/tkai-agents/apps/rag/src/chunking/` → `backend/app/chunking/`
     - Import 경로 수정
   - Dependencies: SETUP-2
 
-- [ ] **EVAL-3**: embedding 모듈 복사 및 수정
+- [X] **EVAL-3**: embedding 모듈 복사 및 수정
   - Files: `backend/app/embedding/`
   - Description:
     - `/Users/chohongcheol/tkai-agents/apps/rag/src/embedding/` → `backend/app/embedding/`
     - Import 경로 수정
   - Dependencies: SETUP-2
 
-- [ ] **EVAL-4**: pipeline 모듈 복사 및 수정
+- [X] **EVAL-4**: pipeline 모듈 복사 및 수정
   - Files: `backend/app/pipeline/`
   - Description:
     - `/Users/chohongcheol/tkai-agents/apps/rag/src/pipeline/` → `backend/app/pipeline/`
     - QueryPipeline, ClaudeGenerator
   - Dependencies: SETUP-2
 
-- [ ] **EVAL-5**: Qdrant 서비스 확장
+- [X] **EVAL-5**: Qdrant 서비스 확장
   - Files: `backend/app/services/qdrant_service.py`
   - Description:
     - Hybrid search 지원
@@ -87,21 +87,21 @@ tkai-agents 코드 마이그레이션
 ### Phase 3: Reranking Module Implementation 🆕
 리랭킹 모듈 구현 (새로 추가)
 
-- [ ] **RERANK-1**: Base Reranker 인터페이스
+- [X] **RERANK-1**: Base Reranker 인터페이스
   - Files: `backend/app/reranking/rerankers/base_reranker.py`
   - Description:
     - BaseReranker 추상 클래스
     - rerank(query, documents, top_k) 메서드
   - Dependencies: None
 
-- [ ] **RERANK-2**: CrossEncoder Reranker
+- [X] **RERANK-2**: CrossEncoder Reranker
   - Files: `backend/app/reranking/rerankers/cross_encoder.py`
   - Description:
     - BAAI/bge-reranker-v2-m3 사용
     - sentence-transformers CrossEncoder
   - Dependencies: RERANK-1
 
-- [ ] **RERANK-3**: BM25 Reranker
+- [X] **RERANK-3**: BM25 Reranker
   - Files: `backend/app/reranking/rerankers/bm25.py`
   - Description:
     - rank-bm25 라이브러리
@@ -115,7 +115,7 @@ tkai-agents 코드 마이그레이션
     - (Optional, 복잡도 높음)
   - Dependencies: RERANK-1
 
-- [ ] **RERANK-5**: None Reranker
+- [X] **RERANK-5**: None Reranker
   - Files: `backend/app/reranking/rerankers/none.py`
   - Description:
     - Pass-through reranker (순위 변경 없음)
@@ -124,7 +124,7 @@ tkai-agents 코드 마이그레이션
 ### Phase 4: Data Models (용어 변경)
 RAG, DataSource, DataSourceSync 모델
 
-- [ ] **MODEL-1**: RAGConfiguration 모델
+- [X] **MODEL-1**: RAGConfiguration 모델
   - Files: `backend/app/models/rag.py`, `backend/app/models/__init__.py`
   - Description:
     - id, name, description
@@ -134,14 +134,14 @@ RAG, DataSource, DataSourceSync 모델
     - collection_name: "rag_{id}"
   - Dependencies: None
 
-- [ ] **MODEL-2**: DataSource 모델
+- [X] **MODEL-2**: DataSource 모델
   - Files: `backend/app/models/datasource.py`
   - Description:
     - id, name, source_type, source_uri
     - file_size, content_hash, status, metadata
   - Dependencies: None
 
-- [ ] **MODEL-3**: DataSourceSync 모델
+- [X] **MODEL-3**: DataSourceSync 모델
   - Files: `backend/app/models/datasource_sync.py`
   - Description:
     - rag_id, datasource_id (FK)
@@ -151,7 +151,7 @@ RAG, DataSource, DataSourceSync 모델
     - UNIQUE(rag_id, datasource_id)
   - Dependencies: MODEL-1, MODEL-2
 
-- [ ] **MODEL-4**: EvaluationDataset 모델
+- [X] **MODEL-4**: EvaluationDataset 모델
   - Files: `backend/app/models/evaluation_dataset.py`
   - Description:
     - id, name, description
@@ -159,7 +159,7 @@ RAG, DataSource, DataSourceSync 모델
     - num_queries, num_documents
   - Dependencies: None
 
-- [ ] **MODEL-5**: Evaluation & EvaluationResult 모델
+- [X] **MODEL-5**: Evaluation & EvaluationResult 모델
   - Files: `backend/app/models/evaluation.py`
   - Description:
     - Evaluation: rag_id, dataset_id, status, progress
@@ -169,7 +169,7 @@ RAG, DataSource, DataSourceSync 모델
 ### Phase 5: RAG Factory
 통합 Factory (3개 모듈)
 
-- [ ] **FACTORY-1**: RAGFactory 구현
+- [X] **FACTORY-1**: RAGFactory 구현
   - Files: `backend/app/services/rag_factory.py`
   - Description:
     - create_chunker(module, params) → Chunker
@@ -184,7 +184,7 @@ RAG, DataSource, DataSourceSync 모델
 
 ### Phase 6: Pydantic Schemas
 
-- [ ] **SCHEMA-1**: RAG 스키마
+- [X] **SCHEMA-1**: RAG 스키마
   - Files: `backend/app/schemas/rag.py`
   - Description:
     - RAGCreate: name, description, 3개 모듈 선택
@@ -192,14 +192,14 @@ RAG, DataSource, DataSourceSync 모델
     - ChunkingConfig, EmbeddingConfig, RerankingConfig
   - Dependencies: None
 
-- [ ] **SCHEMA-2**: DataSource 스키마
+- [X] **SCHEMA-2**: DataSource 스키마
   - Files: `backend/app/schemas/datasource.py`
   - Description:
     - DataSourceCreate, DataSourceResponse
     - UploadResponse
   - Dependencies: None
 
-- [ ] **SCHEMA-3**: Sync 스키마
+- [X] **SCHEMA-3**: Sync 스키마
   - Files: `backend/app/schemas/sync.py`
   - Description:
     - SyncRequest: { rag_id, datasource_id }
@@ -207,7 +207,7 @@ RAG, DataSource, DataSourceSync 모델
     - SyncStatus, SyncProgress
   - Dependencies: None
 
-- [ ] **SCHEMA-4**: EvaluationDataset 스키마
+- [X] **SCHEMA-4**: EvaluationDataset 스키마
   - Files: `backend/app/schemas/dataset.py`
   - Description:
     - DatasetUploadRequest
@@ -215,7 +215,7 @@ RAG, DataSource, DataSourceSync 모델
     - DatasetDetail (queries, documents 포함)
   - Dependencies: None
 
-- [ ] **SCHEMA-5**: Evaluation 스키마
+- [X] **SCHEMA-5**: Evaluation 스키마
   - Files: `backend/app/schemas/evaluation.py`
   - Description:
     - EvaluationCreate: { rag_id, dataset_id }
@@ -224,7 +224,7 @@ RAG, DataSource, DataSourceSync 모델
     - MetricsResponse
   - Dependencies: None
 
-- [ ] **SCHEMA-6**: Query 스키마
+- [X] **SCHEMA-6**: Query 스키마
   - Files: `backend/app/schemas/query.py`
   - Description:
     - SearchRequest: query, rag_id, datasource_ids, top_k
@@ -236,7 +236,7 @@ RAG, DataSource, DataSourceSync 모델
 
 ### Phase 7: Services Layer
 
-- [ ] **SERVICE-1**: SyncService 구현 (핵심!) 🔑
+- [X] **SERVICE-1**: SyncService 구현 (핵심!) 🔑
   - Files: `backend/app/services/sync_service.py`
   - Description:
     - sync_datasource(rag_id, datasource_id) → DataSourceSync
@@ -252,7 +252,7 @@ RAG, DataSource, DataSourceSync 모델
     - delete_sync(sync_id) - Qdrant에서도 삭제
   - Dependencies: FACTORY-1, MODEL-3
 
-- [ ] **SERVICE-2**: QueryService 구현
+- [X] **SERVICE-2**: QueryService 구현
   - Files: `backend/app/services/query_service.py`
   - Description:
     - search(rag_id, query, datasource_ids, top_k):
@@ -268,7 +268,7 @@ RAG, DataSource, DataSourceSync 모델
       3. ClaudeGenerator로 답변 생성
   - Dependencies: FACTORY-1, EVAL-4
 
-- [ ] **SERVICE-3**: EvaluationService 구현
+- [X] **SERVICE-3**: EvaluationService 구현
   - Files: `backend/app/services/evaluation_service.py`
   - Description:
     - evaluate_rag(rag_id, dataset_id) → Evaluation
@@ -276,7 +276,7 @@ RAG, DataSource, DataSourceSync 모델
     - Background task로 RAGEvaluator 실행
   - Dependencies: EVAL-1, FACTORY-1, MODEL-5
 
-- [ ] **SERVICE-4**: RAGService 구현
+- [X] **SERVICE-4**: RAGService 구현
   - Files: `backend/app/services/rag_service.py`
   - Description:
     - create_rag(data) → RAGConfiguration
@@ -287,7 +287,7 @@ RAG, DataSource, DataSourceSync 모델
 
 ### Phase 8: API Endpoints
 
-- [ ] **API-1**: RAG 엔드포인트
+- [X] **API-1**: RAG 엔드포인트
   - Files: `backend/app/api/routes/rags.py`
   - Description:
     - POST /api/v1/rags - RAG 생성
@@ -298,7 +298,7 @@ RAG, DataSource, DataSourceSync 모델
     - GET /api/v1/rags/{id}/datasources - 할당된 데이터 소스
   - Dependencies: SCHEMA-1, SERVICE-4
 
-- [ ] **API-2**: DataSource 엔드포인트
+- [X] **API-2**: DataSource 엔드포인트
   - Files: `backend/app/api/routes/datasources.py`
   - Description:
     - POST /api/v1/datasources/upload - 파일 업로드
@@ -308,7 +308,7 @@ RAG, DataSource, DataSourceSync 모델
     - GET /api/v1/datasources/{id}/syncs - 동기화 기록
   - Dependencies: SCHEMA-2
 
-- [ ] **API-3**: Sync 엔드포인트 (핵심!) 🔑
+- [X] **API-3**: Sync 엔드포인트 (핵심!) 🔑
   - Files: `backend/app/api/routes/sync.py`
   - Description:
     - POST /api/v1/sync - 동기화 시작
@@ -318,7 +318,7 @@ RAG, DataSource, DataSourceSync 모델
     - POST /api/v1/sync/{id}/rebuild - 재동기화
   - Dependencies: SCHEMA-3, SERVICE-1
 
-- [ ] **API-4**: EvaluationDataset 엔드포인트
+- [X] **API-4**: EvaluationDataset 엔드포인트
   - Files: `backend/app/api/routes/datasets.py`
   - Description:
     - POST /api/v1/datasets/upload - JSON 업로드
@@ -327,7 +327,7 @@ RAG, DataSource, DataSourceSync 모델
     - DELETE /api/v1/datasets/{id} - 삭제
   - Dependencies: SCHEMA-4
 
-- [ ] **API-5**: Evaluation 엔드포인트
+- [X] **API-5**: Evaluation 엔드포인트
   - Files: `backend/app/api/routes/evaluate.py`
   - Description:
     - POST /api/v1/evaluations/run - 단일 RAG 평가
@@ -337,14 +337,14 @@ RAG, DataSource, DataSourceSync 모델
     - POST /api/v1/evaluations/{id}/cancel - 취소
   - Dependencies: SCHEMA-5, SERVICE-3
 
-- [ ] **API-6**: Query 엔드포인트
+- [X] **API-6**: Query 엔드포인트
   - Files: `backend/app/api/routes/query.py`
   - Description:
     - POST /api/v1/query/search - 벡터 검색 (reranking 포함)
     - POST /api/v1/query/answer - 검색 + LLM 답변
   - Dependencies: SCHEMA-6, SERVICE-2
 
-- [ ] **API-7**: API 라우터 등록
+- [X] **API-7**: API 라우터 등록
   - Files: `backend/app/main.py`
   - Description:
     - 모든 라우터 등록

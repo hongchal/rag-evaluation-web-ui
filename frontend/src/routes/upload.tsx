@@ -1,69 +1,287 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
+import { api } from '../lib/api'
 
-export const Route = createFileRoute("/upload")({
-  component: Upload,
-});
+export const Route = createFileRoute('/upload')({
+  component: UploadPage,
+})
 
-function Upload() {
+type UploadType = 'datasource' | 'dataset'
+
+function UploadPage() {
+  const navigate = useNavigate()
+  const [uploadType, setUploadType] = useState<UploadType>('datasource')
+  const [file, setFile] = useState<File | null>(null)
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0]
+    if (selectedFile) {
+      setFile(selectedFile)
+      if (!name) {
+        setName(selectedFile.name.replace(/\.[^/.]+$/, ''))
+      }
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!file) {
+      setError('Please select a file')
+      return
+    }
+
+    setUploading(true)
+    setError(null)
+
+    try {
+      if (uploadType === 'datasource') {
+        await api.uploadDataSource(file, name, description || undefined)
+        navigate({ to: '/datasources' } as any)
+      } else {
+        await api.uploadDataset(file, name, description || undefined)
+        navigate({ to: '/datasets' } as any)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const getAcceptedFileTypes = () => {
+    if (uploadType === 'datasource') {
+      return '.txt,.pdf,.json'
+    }
+    return '.json'
+  }
+
+  const getFileTypeDescription = () => {
+    if (uploadType === 'datasource') {
+      return 'TXT, PDF, or JSON files'
+    }
+    return 'JSON files with queries and documents'
+  }
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Upload Documents</h1>
-        <p className="mt-2 text-muted-foreground">
-          Upload PDF or TXT files to evaluate with different RAG strategies
-        </p>
-      </div>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Upload Files</h1>
 
-      <div className="rounded-lg border-2 border-dashed border-border bg-accent p-12 text-center transition-colors hover:border-primary">
-        <div className="space-y-4">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-primary"
+      <div className="max-w-3xl mx-auto">
+        {/* Upload Type Selection */}
+        <div className="bg-white shadow rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Select Upload Type</h2>
+          <div className="grid md:grid-cols-2 gap-4">
+            <button
+              onClick={() => setUploadType('datasource')}
+              className={`p-6 border-2 rounded-lg text-left transition-all ${
+                uploadType === 'datasource'
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
             >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" x2="12" y1="3" y2="15" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-medium">
-              Click to upload or drag and drop
-            </p>
-            <p className="text-xs text-muted-foreground">
-              PDF or TXT files (max 50MB)
-            </p>
-          </div>
-          <input
-            type="file"
-            accept=".pdf,.txt"
-            className="hidden"
-            id="file-upload"
-          />
-          <label
-            htmlFor="file-upload"
-            className="inline-flex cursor-pointer items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
-          >
-            Select Files
-          </label>
-        </div>
-      </div>
+              <div className="flex items-start space-x-3">
+                <div className="text-3xl">📁</div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg mb-2">Data Source</h3>
+                  <p className="text-sm text-gray-600">
+                    Upload files to be indexed with RAG configurations. These files will be chunked, embedded, and stored in Qdrant.
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Supports: TXT, PDF, JSON
+                  </p>
+                </div>
+              </div>
+            </button>
 
-      <div className="rounded-lg border bg-card p-6">
-        <h3 className="mb-4 text-lg font-semibold">Uploaded Files</h3>
-        <div className="text-center text-sm text-muted-foreground">
-          No files uploaded yet
+            <button
+              onClick={() => setUploadType('dataset')}
+              className={`p-6 border-2 rounded-lg text-left transition-all ${
+                uploadType === 'dataset'
+                  ? 'border-green-500 bg-green-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-start space-x-3">
+                <div className="text-3xl">📊</div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg mb-2">Evaluation Dataset</h3>
+                  <p className="text-sm text-gray-600">
+                    Upload benchmark datasets for evaluating RAG performance. Must contain queries and ground truth documents.
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Supports: JSON (BEIR format)
+                  </p>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Upload Form */}
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-6">
+            Upload {uploadType === 'datasource' ? 'Data Source' : 'Dataset'}
+          </h2>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* File Upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                File *
+              </label>
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-gray-400 transition-colors">
+                <div className="space-y-1 text-center">
+                  {file ? (
+                    <div className="flex items-center space-x-3">
+                      <span className="text-4xl">
+                        {file.type.includes('pdf') ? '📄' : file.type.includes('json') ? '📋' : '📝'}
+                      </span>
+                      <div className="text-left">
+                        <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {(file.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setFile(null)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <svg
+                        className="mx-auto h-12 w-12 text-gray-400"
+                        stroke="currentColor"
+                        fill="none"
+                        viewBox="0 0 48 48"
+                      >
+                        <path
+                          d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <div className="flex text-sm text-gray-600">
+                        <label className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500">
+                          <span>Upload a file</span>
+                          <input
+                            type="file"
+                            className="sr-only"
+                            accept={getAcceptedFileTypes()}
+                            onChange={handleFileChange}
+                          />
+                        </label>
+                        <p className="pl-1">or drag and drop</p>
+                      </div>
+                      <p className="text-xs text-gray-500">{getFileTypeDescription()}</p>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Name *
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter a descriptive name"
+                required
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description (Optional)
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={3}
+                placeholder="Add a description..."
+              />
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex space-x-3">
+              <button
+                type="submit"
+                disabled={uploading || !file}
+                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 font-medium"
+              >
+                {uploading ? 'Uploading...' : 'Upload'}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate({ to: '/' })}
+                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Info Box */}
+        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-blue-900 mb-3">
+            ℹ️ Upload Guidelines
+          </h3>
+          <div className="space-y-2 text-sm text-blue-800">
+            {uploadType === 'datasource' ? (
+              <>
+                <p><strong>Data Sources</strong> are files you want to index and search through.</p>
+                <ul className="list-disc ml-6 space-y-1">
+                  <li>TXT files: Plain text documents</li>
+                  <li>PDF files: PDF documents (text extraction)</li>
+                  <li>JSON files: Structured data</li>
+                </ul>
+                <p className="mt-2">After uploading, go to the Sync page to index the file with a RAG configuration.</p>
+              </>
+            ) : (
+              <>
+                <p><strong>Evaluation Datasets</strong> are used to measure RAG performance.</p>
+                <p>Required JSON format:</p>
+                <pre className="bg-blue-100 p-2 rounded text-xs mt-2 overflow-x-auto">
+{`{
+  "queries": [
+    {"id": "q1", "text": "query text"}
+  ],
+  "documents": [
+    {"id": "d1", "text": "document text"}
+  ],
+  "qrels": {
+    "q1": {"d1": 1}
+  }
+}`}
+                </pre>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
-  );
+  )
 }
-

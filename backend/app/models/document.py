@@ -10,7 +10,19 @@ from app.core.database import Base
 
 
 class Document(Base):
-    """Model for uploaded documents."""
+    """
+    Model for uploaded documents via web UI.
+    
+    This model stores metadata and content of files uploaded through the web interface.
+    
+    Note: This is different from BaseDocument (dataclass) which is used for runtime
+    document representation in the evaluation system. BaseDocument is used when loading
+    files from datasets or processing documents during evaluation.
+    
+    Usage:
+    - Document (SQLAlchemy): File upload system, persistent storage
+    - BaseDocument (dataclass): Runtime document processing, evaluation system
+    """
 
     __tablename__ = "documents"
 

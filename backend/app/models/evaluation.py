@@ -19,11 +19,11 @@ class Evaluation(Base):
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # References
-    document_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("documents.id"), nullable=False, index=True
+    rag_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("rag_configurations.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    strategy_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("strategies.id"), nullable=False, index=True
+    dataset_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("evaluation_datasets.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
     # Status
@@ -44,6 +44,11 @@ class Evaluation(Base):
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
+    # Relationships
+    rag = relationship("RAGConfiguration", back_populates="evaluations")
+    dataset = relationship("EvaluationDataset", back_populates="evaluations")
+    results = relationship("EvaluationResult", back_populates="evaluation", cascade="all, delete-orphan")
+
     def __repr__(self) -> str:
         return f"<Evaluation(id={self.id}, name={self.name}, status={self.status})>"
 
@@ -55,7 +60,7 @@ class EvaluationResult(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     evaluation_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("evaluations.id"), nullable=False, index=True
+        Integer, ForeignKey("evaluations.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
     # Metrics
@@ -80,12 +85,15 @@ class EvaluationResult(Base):
     query_results: Mapped[dict] = mapped_column(
         JSON, nullable=True
     )  # Sample query results
-    metadata: Mapped[dict] = mapped_column(JSON, nullable=True)
+    result_metadata: Mapped[dict] = mapped_column(JSON, nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.utcnow
     )
+
+    # Relationships
+    evaluation = relationship("Evaluation", back_populates="results")
 
     def __repr__(self) -> str:
         return f"<EvaluationResult(id={self.id}, evaluation_id={self.evaluation_id}, ndcg={self.ndcg_at_k:.4f})>"

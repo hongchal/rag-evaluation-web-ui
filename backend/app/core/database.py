@@ -1,7 +1,8 @@
 """Database connection and session management."""
 
+from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.core.config import settings
 
@@ -19,6 +20,20 @@ AsyncSessionLocal = async_sessionmaker(
     expire_on_commit=False,
     autocommit=False,
     autoflush=False,
+)
+
+# Create sync engine for non-async operations
+sync_engine = create_engine(
+    settings.database_url,
+    echo=True if settings.log_level == "DEBUG" else False,
+    future=True,
+)
+
+# Create sync session maker
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=sync_engine,
 )
 
 # Base class for models
