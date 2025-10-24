@@ -6,6 +6,7 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 ENV/
 build/
 develop-eggs/
@@ -65,4 +66,7 @@ coverage/
 # Uploads
 uploads/
 temp/
+
+# mise
+.mise.local.toml
 

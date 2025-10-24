@@ -39,6 +39,14 @@ class Settings(BaseSettings):
         default=1024, description="Embedding vector dimension"
     )
 
+    # Chunking
+    chunk_size: int = Field(
+        default=512, description="Default chunk size for text splitting"
+    )
+    chunk_overlap: int = Field(
+        default=50, description="Default chunk overlap"
+    )
+
     # File Storage
     upload_dir: str = Field(default="./uploads", description="Directory for uploads")
     max_file_size_mb: int = Field(default=50, description="Max file size in MB")

@@ -6,6 +6,8 @@ python-multipart==0.0.12
 # Database
 sqlalchemy==2.0.36
 asyncpg==0.30.0
+psycopg2-binary==2.9.10
+greenlet==3.1.1
 alembic==1.14.0
 
 # Vector Database
@@ -13,7 +15,8 @@ qdrant-client==1.12.1
 
 # Embeddings
 FlagEmbedding==1.2.11
-torch==2.5.1
+peft==0.13.2
+torch==2.6.0
 tiktoken==0.8.0
 sentence-transformers==3.3.1
 
@@ -23,7 +26,7 @@ pdfplumber==0.11.4
 python-docx==1.1.2
 
 # Text Processing
-langchain-text-splitters==0.3.2
+langchain-text-splitters==0.3.8
 
 # Configuration
 python-dotenv==1.0.1
@@ -43,4 +46,15 @@ passlib[bcrypt]==1.7.4
 
 # SSE Support
 sse-starlette==2.1.3
+
+# Evaluation & RAG extras
+anthropic==0.69.0
+ragas==0.2.15
+langchain-anthropic==0.3.21
+langchain-community==0.3.26
+langchain==0.3.26
+langchain-core==0.3.76
+rank-bm25==0.2.2
+pandas==2.2.3
+numpy==1.26.4
 

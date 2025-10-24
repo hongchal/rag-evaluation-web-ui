@@ -1,0 +1,27 @@
+# Docker ignore for frontend
+
+# Git
+.git
+.gitignore
+
+# Node
+node_modules/
+dist/
+build/
+*.log
+
+# Env
+.env*
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Coverage & Cache
+coverage/
+.cache/
+
+# Docker
+Dockerfile*
+.dockerignore

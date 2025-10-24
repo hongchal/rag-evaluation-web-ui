@@ -44,6 +44,19 @@ async def lifespan(app: FastAPI):
     settings.upload_path.mkdir(parents=True, exist_ok=True)
     logger.info("Upload directory created", path=str(settings.upload_path))
 
+    # Seed default RAG configurations
+    from app.core.database import SessionLocal
+    from app.services.rag_service import RAGService
+    
+    db = SessionLocal()
+    try:
+        default_rags = RAGService.seed_default_rags(db)
+        logger.info("Default RAGs seeded", count=len(default_rags))
+    except Exception as e:
+        logger.error("Failed to seed default RAGs", error=str(e))
+    finally:
+        db.close()
+
     yield
 
     # Shutdown
@@ -85,8 +98,11 @@ async def health():
 
 
 # Import and include routers
-# TODO: Add routers when implemented
-# from app.api import files, strategies, evaluations
-# app.include_router(files.router, prefix="/api/files", tags=["files"])
-# app.include_router(strategies.router, prefix="/api/strategies", tags=["strategies"])
-# app.include_router(evaluations.router, prefix="/api/evaluations", tags=["evaluations"])
+from app.api.routes import rags, datasources, sync, datasets, evaluate, query
+
+app.include_router(rags.router)
+app.include_router(datasources.router)
+app.include_router(sync.router)
+app.include_router(datasets.router)
+app.include_router(evaluate.router)
+app.include_router(query.router)

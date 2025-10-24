@@ -1,78 +1,70 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from '@tanstack/react-router'
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute('/')({
   component: Index,
-});
+})
 
 function Index() {
   return (
-    <div className="space-y-8">
-      <div className="space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight">
-          Welcome to RAG Evaluation
-        </h1>
-        <p className="text-lg text-muted-foreground">
-          A comprehensive tool for evaluating and comparing different RAG
-          strategies
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-4xl font-bold mb-4">RAG Evaluation System</h1>
+        <p className="text-xl text-gray-600 mb-8">
+          Create, test, and evaluate RAG configurations
         </p>
-      </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <h3 className="mb-2 text-lg font-semibold">1. Upload Documents</h3>
-          <p className="text-sm text-muted-foreground">
-            Upload your PDF or TXT files to get started with evaluation
-          </p>
+        <div className="grid md:grid-cols-2 gap-6 mb-12">
+          <Link
+            to="/rags/create"
+            className="block bg-white shadow-lg rounded-lg p-8 hover:shadow-xl transition-shadow"
+          >
+            <h2 className="text-2xl font-semibold mb-3">🎯 Create RAG</h2>
+            <p className="text-gray-600">
+              Configure chunking, embedding, and reranking modules
+            </p>
+          </Link>
+
+          <Link
+            to="/query"
+            className="block bg-white shadow-lg rounded-lg p-8 hover:shadow-xl transition-shadow"
+          >
+            <h2 className="text-2xl font-semibold mb-3">🔍 Test Query</h2>
+            <p className="text-gray-600">
+              Search and test your RAG configurations
+            </p>
+          </Link>
+
+          <Link
+            to="/evaluate"
+            className="block bg-white shadow-lg rounded-lg p-8 hover:shadow-xl transition-shadow"
+          >
+            <h2 className="text-2xl font-semibold mb-3">📊 Evaluate</h2>
+            <p className="text-gray-600">
+              Run evaluations on benchmark datasets
+            </p>
+          </Link>
+
+          <Link
+            to="/upload"
+            className="block bg-white shadow-lg rounded-lg p-8 hover:shadow-xl transition-shadow"
+          >
+            <h2 className="text-2xl font-semibold mb-3">📁 Upload Data</h2>
+            <p className="text-gray-600">
+              Upload documents and datasets
+            </p>
+          </Link>
         </div>
 
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <h3 className="mb-2 text-lg font-semibold">
-            2. Configure Strategies
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            Choose chunking, embedding, and reranking strategies for your RAG
-            pipeline
-          </p>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-3">Quick Start</h3>
+          <ol className="list-decimal list-inside space-y-2 text-gray-700">
+            <li>Create a new RAG configuration</li>
+            <li>Upload documents to create a data source</li>
+            <li>Sync the data source with your RAG</li>
+            <li>Test queries or run evaluations</li>
+          </ol>
         </div>
-
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <h3 className="mb-2 text-lg font-semibold">3. Compare Results</h3>
-          <p className="text-sm text-muted-foreground">
-            Analyze performance metrics and compare different configurations
-          </p>
-        </div>
-      </div>
-
-      <div className="rounded-lg border bg-accent p-6">
-        <h3 className="mb-3 text-xl font-semibold">Features</h3>
-        <ul className="space-y-2 text-sm">
-          <li className="flex items-start gap-2">
-            <span className="text-primary">✓</span>
-            <span>
-              Multiple chunking strategies (Recursive, Hierarchical, Semantic)
-            </span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary">✓</span>
-            <span>Various embedding models (BGE-M3, Matryoshka, and more)</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary">✓</span>
-            <span>Real-time evaluation progress monitoring</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary">✓</span>
-            <span>
-              Comprehensive metrics (NDCG@K, MRR, Precision, Recall, etc.)
-            </span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary">✓</span>
-            <span>Visual comparison dashboards with charts</span>
-          </li>
-        </ul>
       </div>
     </div>
-  );
+  )
 }
-

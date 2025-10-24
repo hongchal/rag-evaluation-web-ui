@@ -9,7 +9,15 @@ from app.core.database import Base
 
 
 class Strategy(Base):
-    """Model for RAG strategy configurations."""
+    """
+    DEPRECATED: Use RAGConfiguration instead.
+    
+    This model is kept for backward compatibility with the existing web UI.
+    New implementations should use RAGConfiguration which provides:
+    - Qdrant collection management
+    - Relationship with evaluations and syncs
+    - Better naming (module instead of strategy)
+    """
 
     __tablename__ = "strategies"
 

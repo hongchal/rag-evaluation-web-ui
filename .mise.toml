@@ -1,0 +1,171 @@
+# mise configuration for RAG Evaluation Web UI
+# https://mise.jdx.dev/
+
+[tools]
+python = "3.11"
+node = "20"
+
+[env]
+# Python virtual environment
+_.python.venv = { path = ".venv", create = true }
+
+[tasks.install]
+description = "Install all dependencies"
+run = [
+  "cd backend && pip install -r requirements.txt",
+  "cd frontend && npm install"
+]
+
+[tasks."dev:all"]
+description = "Setup everything and start all services (one command setup)"
+run = [
+  "echo '🚀 Starting complete development environment...'",
+  "echo ''",
+  "echo '📦 Step 1/5: Installing Python and Node.js...'",
+  "mise install",
+  "echo '✅ Tools installed'",
+  "echo ''",
+  "echo '📦 Step 2/5: Installing backend dependencies...'",
+  "cd backend && pip install -r requirements.txt",
+  "echo '✅ Backend dependencies installed'",
+  "echo ''",
+  "echo '📦 Step 3/5: Installing frontend dependencies...'",
+  "cd frontend && npm install",
+  "echo '✅ Frontend dependencies installed'",
+  "echo ''",
+  "echo '🐳 Step 4/5: Starting Docker services (Postgres, Qdrant)...'",
+  "docker compose up -d postgres qdrant",
+  "echo '⏳ Waiting for services to be ready...'",
+  "sleep 5",
+  "echo '✅ Docker services ready'",
+  "echo ''",
+  "echo '🔧 Step 5/5: Copying environment file...'",
+  "test -f backend/.env || cp backend/env.example backend/.env",
+  "echo '✅ Environment file ready'",
+  "echo ''",
+  "echo '✨ Setup complete!'",
+  "echo ''",
+  "echo '📍 Services:'",
+  "echo '  - Backend API: http://localhost:8000'",
+  "echo '  - API Docs: http://localhost:8000/docs'",
+  "echo '  - Frontend: http://localhost:5174'",
+  "echo '  - PostgreSQL: localhost:5433'",
+  "echo '  - Qdrant: localhost:6335'",
+  "echo ''",
+  "echo '🚀 Starting development servers...'",
+  "echo ''",
+  "(cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000) & (cd frontend && npm run dev)",
+]
+
+[tasks."dev:serve"]
+description = "Start backend and frontend servers (after dev:all)"
+run = [
+  "echo '🚀 Starting development servers...'",
+  "echo ''",
+  "echo '📍 Backend: http://localhost:8000'",
+  "echo '📍 Frontend: http://localhost:5174'",
+  "echo ''",
+  "echo 'Press Ctrl+C to stop all servers'",
+  "echo ''",
+  "(cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000) & (cd frontend && npm run dev)"
+]
+
+[tasks.dev]
+description = "Start development servers (requires Docker services)"
+run = [
+  "docker compose up -d postgres qdrant",
+  "echo 'Starting backend and frontend...'",
+  "cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &",
+  "cd frontend && npm run dev"
+]
+
+[tasks.backend]
+description = "Start backend server"
+run = "cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
+
+[tasks.frontend]
+description = "Start frontend server"
+run = "cd frontend && npm run dev"
+
+[tasks.docker]
+description = "Start all services with Docker Compose"
+run = "docker compose up -d"
+
+[tasks.docker-down]
+description = "Stop all Docker services"
+run = "docker compose down"
+
+[tasks.docker-logs]
+description = "View Docker logs"
+run = "docker compose logs -f"
+
+[tasks.down]
+description = "Stop all services (backend, frontend, docker)"
+run = [
+  "echo '🛑 Stopping all services...'",
+  "pkill -9 -f 'uvicorn' || true",
+  "pkill -9 -f 'vite' || true",
+  "pkill -9 -f 'multiprocessing' || true",
+  "lsof -ti:8000 | xargs kill -9 2>/dev/null || true",
+  "lsof -ti:5174 | xargs kill -9 2>/dev/null || true",
+  "docker compose down",
+  "echo '✅ All services stopped'"
+]
+
+[tasks.stop]
+description = "Stop backend and frontend servers only"
+run = [
+  "echo '🛑 Stopping servers...'",
+  "pkill -9 -f 'uvicorn' || true",
+  "pkill -9 -f 'vite' || true",
+  "pkill -9 -f 'multiprocessing' || true",
+  "lsof -ti:8000 | xargs kill -9 2>/dev/null || true",
+  "lsof -ti:5174 | xargs kill -9 2>/dev/null || true",
+  "echo '✅ Servers stopped'"
+]
+
+[tasks.test]
+description = "Run tests"
+run = [
+  "cd backend && pytest",
+  "cd frontend && npm test"
+]
+
+[tasks.lint]
+description = "Run linters"
+run = [
+  "cd backend && ruff check .",
+  "cd frontend && npm run lint"
+]
+
+[tasks.format]
+description = "Format code"
+run = [
+  "cd backend && ruff format .",
+  "cd frontend && npm run format"
+]
+
+[tasks.db-migrate]
+description = "Run database migrations"
+run = "cd backend && alembic upgrade head"
+
+[tasks.db-reset]
+description = "Reset database"
+run = [
+  "docker compose down -v",
+  "docker compose up -d postgres qdrant",
+  "sleep 3",
+  "cd backend && alembic upgrade head"
+]
+
+[tasks.clean]
+description = "Clean build artifacts"
+run = [
+  "find . -type d -name '__pycache__' -exec rm -rf {} +",
+  "find . -type d -name '.pytest_cache' -exec rm -rf {} +",
+  "find . -type d -name 'node_modules' -exec rm -rf {} +",
+  "find . -type d -name 'dist' -exec rm -rf {} +",
+  "rm -rf backend/.venv",
+  "rm -rf .venv"
+]
+
