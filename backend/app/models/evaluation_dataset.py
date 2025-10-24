@@ -29,6 +29,8 @@ class EvaluationDataset(Base):
 
     # Relationships
     evaluations = relationship("Evaluation", back_populates="dataset", cascade="all, delete-orphan")
+    queries = relationship("EvaluationQuery", back_populates="dataset", cascade="all, delete-orphan")
+    documents = relationship("EvaluationDocument", back_populates="dataset", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<EvaluationDataset(id={self.id}, name='{self.name}', queries={self.num_queries})>"

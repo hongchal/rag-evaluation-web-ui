@@ -6,6 +6,8 @@ from app.models.strategy import Strategy
 from app.models.rag import RAGConfiguration
 from app.models.datasource import DataSource, SourceType, SourceStatus
 from app.models.evaluation_dataset import EvaluationDataset
+from app.models.evaluation_query import EvaluationQuery
+from app.models.evaluation_document import EvaluationDocument
 from app.models.base_document import BaseDocument
 from app.models.base_chunk import BaseChunk
 
@@ -19,6 +21,8 @@ __all__ = [
     "SourceType",
     "SourceStatus",
     "EvaluationDataset",
+    "EvaluationQuery",
+    "EvaluationDocument",
     "BaseDocument",
     "BaseChunk",
 ]

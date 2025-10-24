@@ -10,9 +10,10 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from sqlalchemy.orm import Session
-from app.core.database import SessionLocal, engine
+from app.core.database import SessionLocal, sync_engine, Base
 from app.models.evaluation_dataset import EvaluationDataset
-from app.models import Base
+from app.models.evaluation_query import EvaluationQuery
+from app.models.evaluation_document import EvaluationDocument
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -20,16 +21,17 @@ logger = structlog.get_logger(__name__)
 
 def init_db():
     """Initialize database tables."""
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=sync_engine)
 
 
-def register_dataset(dataset_path: Path, db: Session) -> EvaluationDataset:
+def register_dataset(dataset_path: Path, db: Session, load_content: bool = True) -> EvaluationDataset:
     """
     Register a dataset to the database.
     
     Args:
         dataset_path: Path to the dataset JSON file
         db: Database session
+        load_content: If True, also load queries and documents into DB
         
     Returns:
         Created EvaluationDataset instance
@@ -40,8 +42,10 @@ def register_dataset(dataset_path: Path, db: Session) -> EvaluationDataset:
     
     name = dataset_data.get('name', dataset_path.stem)
     description = dataset_data.get('description', '')
-    num_queries = len(dataset_data.get('queries', []))
-    num_documents = len(dataset_data.get('documents', []))
+    queries_data = dataset_data.get('queries', [])
+    documents_data = dataset_data.get('documents', [])
+    num_queries = len(queries_data)
+    num_documents = len(documents_data)
     
     # Check if dataset already exists
     existing = db.query(EvaluationDataset).filter(
@@ -51,7 +55,7 @@ def register_dataset(dataset_path: Path, db: Session) -> EvaluationDataset:
     if existing:
         logger.info("dataset_already_exists", name=name, id=existing.id)
         print(f"⚠️  Dataset '{name}' already exists (ID: {existing.id})")
-        print(f"   Updating metadata...")
+        print(f"   Updating dataset...")
         
         # Update existing dataset
         existing.description = description
@@ -59,27 +63,67 @@ def register_dataset(dataset_path: Path, db: Session) -> EvaluationDataset:
         existing.num_queries = num_queries
         existing.num_documents = num_documents
         
+        if load_content:
+            # Delete existing queries and documents
+            print(f"   Clearing old queries and documents...")
+            db.query(EvaluationQuery).filter(EvaluationQuery.dataset_id == existing.id).delete()
+            db.query(EvaluationDocument).filter(EvaluationDocument.dataset_id == existing.id).delete()
+        
         db.commit()
         db.refresh(existing)
+        dataset = existing
         
-        print(f"✅ Updated dataset '{name}' (ID: {existing.id})")
-        return existing
+    else:
+        # Create new dataset
+        dataset = EvaluationDataset(
+            name=name,
+            description=description,
+            dataset_uri=str(dataset_path.absolute()),
+            num_queries=num_queries,
+            num_documents=num_documents
+        )
+        
+        db.add(dataset)
+        db.commit()
+        db.refresh(dataset)
+        
+        logger.info("dataset_registered", name=name, id=dataset.id)
     
-    # Create new dataset
-    dataset = EvaluationDataset(
-        name=name,
-        description=description,
-        dataset_uri=str(dataset_path.absolute()),
-        num_queries=num_queries,
-        num_documents=num_documents
-    )
+    # Load content if requested
+    if load_content:
+        print(f"   Loading documents... ({num_documents} total)")
+        
+        # Load documents
+        for doc_data in documents_data:
+            doc = EvaluationDocument(
+                dataset_id=dataset.id,
+                doc_id=doc_data['id'],
+                content=doc_data['content'],
+                title=doc_data.get('title'),
+                extra_metadata=doc_data.get('metadata', {})
+            )
+            db.add(doc)
+        
+        print(f"   Loading queries... ({num_queries} total)")
+        
+        # Load queries
+        for idx, query_data in enumerate(queries_data):
+            query = EvaluationQuery(
+                dataset_id=dataset.id,
+                query=query_data['query'],
+                expected_answer=query_data.get('expected_answer'),
+                relevant_doc_ids=query_data.get('relevant_doc_ids', []),
+                difficulty=query_data.get('difficulty'),
+                query_type=query_data.get('query_type'),
+                extra_metadata=query_data.get('metadata', {}),
+                query_idx=idx
+            )
+            db.add(query)
+        
+        db.commit()
+        print(f"✅ Loaded {num_documents} documents and {num_queries} queries into DB")
     
-    db.add(dataset)
-    db.commit()
-    db.refresh(dataset)
-    
-    logger.info("dataset_registered", name=name, id=dataset.id)
-    print(f"✅ Registered dataset '{name}' (ID: {dataset.id})")
+    print(f"✅ {'Updated' if existing else 'Registered'} dataset '{name}' (ID: {dataset.id})")
     
     return dataset
 
