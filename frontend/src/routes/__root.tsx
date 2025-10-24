@@ -40,12 +40,6 @@ const RootLayout = () => (
               Datasets
             </Link>
             <Link
-              to="/sync"
-              className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent [&.active]:bg-accent [&.active]:text-accent-foreground"
-            >
-              Sync
-            </Link>
-            <Link
               to="/query"
               className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent [&.active]:bg-accent [&.active]:text-accent-foreground"
             >

@@ -6,7 +6,6 @@ from sqlalchemy.exc import IntegrityError
 import structlog
 
 from app.models.rag import RAGConfiguration
-from app.models.datasource_sync import DataSourceSync
 from app.services.rag_factory import RAGFactory
 
 logger = structlog.get_logger(__name__)
@@ -244,15 +243,6 @@ class RAGService:
         logger.info("rag_deleted", rag_id=rag_id)
         
         return True
-
-    @staticmethod
-    def get_datasources(db: Session, rag_id: int) -> List[DataSourceSync]:
-        """Get all data sources synced with this RAG."""
-        return (
-            db.query(DataSourceSync)
-            .filter(DataSourceSync.rag_id == rag_id)
-            .all()
-        )
 
     @staticmethod
     def seed_default_rags(db: Session) -> List[RAGConfiguration]:

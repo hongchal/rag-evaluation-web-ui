@@ -48,9 +48,6 @@ class DataSource(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    # Relationships
-    syncs = relationship("DataSourceSync", back_populates="datasource", cascade="all, delete-orphan")
-
     def __repr__(self):
         return f"<DataSource(id={self.id}, name='{self.name}', type='{self.source_type}')>"
 

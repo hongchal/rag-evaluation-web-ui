@@ -11,7 +11,6 @@ from app.schemas.rag import (
     RAGUpdate,
     RAGResponse,
 )
-from app.schemas.sync import SyncResponse
 
 router = APIRouter(prefix="/api/v1/rags", tags=["rags"])
 
@@ -107,22 +106,4 @@ def delete_rag(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"RAG configuration {rag_id} not found"
         )
-
-
-@router.get("/{rag_id}/datasources", response_model=List[SyncResponse])
-def get_rag_datasources(
-    rag_id: int,
-    db: Session = Depends(get_db),
-):
-    """Get all data sources synced with this RAG."""
-    # Check if RAG exists
-    rag = RAGService.get_rag(db, rag_id)
-    if not rag:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"RAG configuration {rag_id} not found"
-        )
-    
-    syncs = RAGService.get_datasources(db, rag_id)
-    return [SyncResponse.from_orm(sync) for sync in syncs]
 

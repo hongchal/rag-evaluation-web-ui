@@ -16,13 +16,6 @@ from app.schemas.datasource import (
     DataSourceListResponse,
     UploadResponse,
 )
-from app.schemas.sync import (
-    SyncRequest,
-    SyncResponse,
-    SyncListResponse,
-    SyncStatus,
-    SyncProgress,
-)
 from app.schemas.dataset import (
     EvaluationDatasetUploadRequest,
     EvaluationDatasetCreate,
@@ -65,12 +58,6 @@ __all__ = [
     "DataSourceResponse",
     "DataSourceListResponse",
     "UploadResponse",
-    # Sync
-    "SyncRequest",
-    "SyncResponse",
-    "SyncListResponse",
-    "SyncStatus",
-    "SyncProgress",
     # Dataset
     "EvaluationDatasetUploadRequest",
     "EvaluationDatasetCreate",

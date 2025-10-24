@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from "./routes/__root"
 import { Route as UploadRouteImport } from "./routes/upload"
-import { Route as SyncRouteImport } from "./routes/sync"
 import { Route as QueryRouteImport } from "./routes/query"
 import { Route as EvaluateRouteImport } from "./routes/evaluate"
 import { Route as IndexRouteImport } from "./routes/index"
@@ -25,11 +24,6 @@ import { Route as EvaluationsIdRouteImport } from "./routes/evaluations.$id"
 const UploadRoute = UploadRouteImport.update({
   id: "/upload",
   path: "/upload",
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SyncRoute = SyncRouteImport.update({
-  id: "/sync",
-  path: "/sync",
   getParentRoute: () => rootRouteImport,
 } as any)
 const QueryRoute = QueryRouteImport.update({
@@ -87,7 +81,6 @@ export interface FileRoutesByFullPath {
   "/": typeof IndexRoute
   "/evaluate": typeof EvaluateRoute
   "/query": typeof QueryRoute
-  "/sync": typeof SyncRoute
   "/upload": typeof UploadRoute
   "/evaluations/$id": typeof EvaluationsIdRoute
   "/evaluations/compare": typeof EvaluationsCompareRoute
@@ -101,7 +94,6 @@ export interface FileRoutesByTo {
   "/": typeof IndexRoute
   "/evaluate": typeof EvaluateRoute
   "/query": typeof QueryRoute
-  "/sync": typeof SyncRoute
   "/upload": typeof UploadRoute
   "/evaluations/$id": typeof EvaluationsIdRoute
   "/evaluations/compare": typeof EvaluationsCompareRoute
@@ -116,7 +108,6 @@ export interface FileRoutesById {
   "/": typeof IndexRoute
   "/evaluate": typeof EvaluateRoute
   "/query": typeof QueryRoute
-  "/sync": typeof SyncRoute
   "/upload": typeof UploadRoute
   "/evaluations/$id": typeof EvaluationsIdRoute
   "/evaluations/compare": typeof EvaluationsCompareRoute
@@ -132,7 +123,6 @@ export interface FileRouteTypes {
     | "/"
     | "/evaluate"
     | "/query"
-    | "/sync"
     | "/upload"
     | "/evaluations/$id"
     | "/evaluations/compare"
@@ -146,7 +136,6 @@ export interface FileRouteTypes {
     | "/"
     | "/evaluate"
     | "/query"
-    | "/sync"
     | "/upload"
     | "/evaluations/$id"
     | "/evaluations/compare"
@@ -160,7 +149,6 @@ export interface FileRouteTypes {
     | "/"
     | "/evaluate"
     | "/query"
-    | "/sync"
     | "/upload"
     | "/evaluations/$id"
     | "/evaluations/compare"
@@ -175,7 +163,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   EvaluateRoute: typeof EvaluateRoute
   QueryRoute: typeof QueryRoute
-  SyncRoute: typeof SyncRoute
   UploadRoute: typeof UploadRoute
   EvaluationsIdRoute: typeof EvaluationsIdRoute
   EvaluationsCompareRoute: typeof EvaluationsCompareRoute
@@ -193,13 +180,6 @@ declare module "@tanstack/react-router" {
       path: "/upload"
       fullPath: "/upload"
       preLoaderRoute: typeof UploadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    "/sync": {
-      id: "/sync"
-      path: "/sync"
-      fullPath: "/sync"
-      preLoaderRoute: typeof SyncRouteImport
       parentRoute: typeof rootRouteImport
     }
     "/query": {
@@ -279,7 +259,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EvaluateRoute: EvaluateRoute,
   QueryRoute: QueryRoute,
-  SyncRoute: SyncRoute,
   UploadRoute: UploadRoute,
   EvaluationsIdRoute: EvaluationsIdRoute,
   EvaluationsCompareRoute: EvaluationsCompareRoute,

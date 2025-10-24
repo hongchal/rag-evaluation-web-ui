@@ -28,7 +28,7 @@ function DataSourcesPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this data source? This will also remove all associated syncs.')) {
+    if (!confirm('Delete this data source?')) {
       return
     }
 
@@ -158,13 +158,6 @@ function DataSourcesPage() {
                     {new Date(ds.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    <Link
-                      to="/sync"
-                      search={{ datasourceId: ds.id } as any}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      Sync
-                    </Link>
                     <button
                       onClick={() => handleDelete(ds.id)}
                       className="text-red-600 hover:text-red-900"
@@ -216,11 +209,11 @@ function DataSourcesPage() {
           <p><strong>Step 1: Upload</strong></p>
           <p className="ml-4">Upload your files (TXT, PDF, JSON) via the Upload page.</p>
           
-          <p className="mt-3"><strong>Step 2: Sync</strong></p>
-          <p className="ml-4">Click "Sync" to index the file with a RAG configuration. This will chunk the content, generate embeddings, and store them in Qdrant.</p>
+          <p className="mt-3"><strong>Step 2: Evaluate</strong></p>
+          <p className="ml-4">Use the Evaluate page to test different RAG configurations with evaluation datasets.</p>
           
           <p className="mt-3"><strong>Step 3: Query</strong></p>
-          <p className="ml-4">Use the Query page to search through your indexed data.</p>
+          <p className="ml-4">Use the Query page to search through your data with the best performing RAG configuration.</p>
         </div>
       </div>
     </div>

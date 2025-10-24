@@ -11,7 +11,6 @@ from app.core.config import settings
 from app.models.datasource import DataSource, SourceType, SourceStatus
 from app.services.file_processor import FileProcessor
 from app.schemas.datasource import DataSourceResponse
-from app.schemas.sync import SyncResponse
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/api/v1/datasources", tags=["datasources"])
@@ -151,27 +150,4 @@ def delete_datasource(
     db.commit()
     
     logger.info("datasource_deleted", datasource_id=datasource_id)
-
-
-@router.get("/{datasource_id}/syncs", response_model=List[SyncResponse])
-def get_datasource_syncs(
-    datasource_id: int,
-    db: Session = Depends(get_db),
-):
-    """Get all sync records for a data source."""
-    # Check if datasource exists
-    datasource = db.query(DataSource).filter(DataSource.id == datasource_id).first()
-    if not datasource:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Data source {datasource_id} not found"
-        )
-    
-    from app.models.datasource_sync import DataSourceSync
-    syncs = (
-        db.query(DataSourceSync)
-        .filter(DataSourceSync.datasource_id == datasource_id)
-        .all()
-    )
-    return [SyncResponse.from_orm(sync) for sync in syncs]
 

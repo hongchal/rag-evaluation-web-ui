@@ -36,7 +36,6 @@ class RAGConfiguration(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     # Relationships
-    syncs = relationship("DataSourceSync", back_populates="rag", cascade="all, delete-orphan")
     evaluations = relationship("Evaluation", back_populates="rag", cascade="all, delete-orphan")
 
     def __repr__(self):

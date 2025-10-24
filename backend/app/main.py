@@ -98,11 +98,10 @@ async def health():
 
 
 # Import and include routers
-from app.api.routes import rags, datasources, sync, datasets, evaluate, query
+from app.api.routes import rags, datasources, datasets, evaluate, query
 
 app.include_router(rags.router)
 app.include_router(datasources.router)
-app.include_router(sync.router)
 app.include_router(datasets.router)
 app.include_router(evaluate.router)
 app.include_router(query.router)
