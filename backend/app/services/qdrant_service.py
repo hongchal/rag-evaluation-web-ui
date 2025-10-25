@@ -121,7 +121,7 @@ class QdrantService:
         payloads: list[dict],
         ids: Optional[list[int]] = None,
         sparse_vectors: Optional[list[dict]] = None,
-    ) -> None:
+    ) -> list[int]:
         """Upsert vectors into collection.
         
         Args:
@@ -131,10 +131,20 @@ class QdrantService:
             ids: Optional IDs for vectors
             sparse_vectors: Optional sparse vectors for hybrid search
                 Format: [{"indices": [1, 2, 3], "values": [0.5, 0.3, 0.2]}, ...]
+        
+        Returns:
+            List of vector IDs that were upserted
         """
         try:
             if ids is None:
-                ids = list(range(len(vectors)))
+                # Generate unique IDs based on timestamp and collection point count
+                import time
+                try:
+                    collection_info = self.client.get_collection(collection_name)
+                    start_id = collection_info.points_count
+                except:
+                    start_id = 0
+                ids = list(range(start_id, start_id + len(vectors)))
 
             # Check if collection uses named vectors (has both dense and sparse)
             collection_info = self.client.get_collection(collection_name)
@@ -189,6 +199,7 @@ class QdrantService:
                 count=len(vectors),
                 hybrid=sparse_vectors is not None,
             )
+            return ids
         except Exception as e:
             logger.error(
                 "vector_upsert_failed",

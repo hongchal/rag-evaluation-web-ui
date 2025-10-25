@@ -446,12 +446,29 @@ class PipelineService:
                         payloads.append(p)
 
                     # Upsert via unified API
-                    self.qdrant_service.upsert_vectors(
+                    vector_ids = self.qdrant_service.upsert_vectors(
                         collection_name=collection_name,
                         vectors=dense_vectors,
                         payloads=payloads,
                         sparse_vectors=valid_sparse,
                     )
+
+                    # Save chunks to RDB
+                    for idx, (ch, vector_id) in enumerate(zip(chunks, vector_ids)):
+                        chunk_record = Chunk(
+                            pipeline_id=pipeline.id,
+                            document_id=doc.id,
+                            chunk_index=idx,
+                            content=ch.content,
+                            metadata=ch.metadata or {},
+                            vector_id=vector_id,
+                            token_count=None,  # TODO: Calculate token count if needed
+                            char_count=len(ch.content)
+                        )
+                        self.db.add(chunk_record)
+                    
+                    # Commit chunks for this document
+                    self.db.commit()
 
                     total_chunks += len(chunks)
                     total_docs += 1
