@@ -18,12 +18,15 @@ class Evaluation(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    # References
-    rag_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("rag_configurations.id", ondelete="CASCADE"), nullable=False, index=True
+    # References - Test pipeline IDs (JSON array) - supports single or multiple pipelines
+    pipeline_ids: Mapped[list] = mapped_column(JSON, nullable=False)
+    
+    # Legacy fields (for backward compatibility)
+    rag_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("rag_configurations.id", ondelete="CASCADE"), nullable=True, index=True
     )
-    dataset_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("evaluation_datasets.id", ondelete="CASCADE"), nullable=False, index=True
+    dataset_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("evaluation_datasets.id", ondelete="CASCADE"), nullable=True, index=True
     )
 
     # Status
@@ -62,6 +65,11 @@ class EvaluationResult(Base):
     evaluation_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("evaluations.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    
+    # Pipeline ID for this result (when multiple pipelines are evaluated)
+    pipeline_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("pipelines.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     # Metrics
     ndcg_at_k: Mapped[float] = mapped_column(Float, nullable=False)
@@ -94,6 +102,7 @@ class EvaluationResult(Base):
 
     # Relationships
     evaluation = relationship("Evaluation", back_populates="results")
+    pipeline = relationship("Pipeline", foreign_keys=[pipeline_id])
 
     def __repr__(self) -> str:
-        return f"<EvaluationResult(id={self.id}, evaluation_id={self.evaluation_id}, ndcg={self.ndcg_at_k:.4f})>"
+        return f"<EvaluationResult(id={self.id}, evaluation_id={self.evaluation_id}, pipeline_id={self.pipeline_id}, ndcg={self.ndcg_at_k:.4f})>"

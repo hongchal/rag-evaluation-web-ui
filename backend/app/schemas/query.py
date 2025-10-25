@@ -10,20 +10,30 @@ class RetrievedChunk(BaseModel):
     content: str = Field(..., description="Chunk content")
     score: float = Field(..., description="Relevance score")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+    is_golden: Optional[bool] = Field(None, description="Whether this chunk is a golden (ground truth) chunk")
+
+
+class QueryComparison(BaseModel):
+    """Test Pipeline 쿼리 결과 비교"""
+    query_id: int = Field(..., description="Query ID from dataset")
+    query_text: str
+    golden_doc_ids: List[str] = Field(..., description="Golden document IDs")
+    retrieved_doc_ids: List[str] = Field(..., description="Retrieved document IDs")
+    precision_at_k: float = Field(..., description="Precision@K")
+    recall_at_k: float = Field(..., description="Recall@K")
+    hit_rate: float = Field(..., description="Hit rate (1 if any golden doc retrieved, 0 otherwise)")
 
 
 class SearchRequest(BaseModel):
     """검색 요청"""
     query: str = Field(..., min_length=1, description="Search query")
-    rag_id: int = Field(..., description="RAG configuration ID to use")
-    datasource_ids: Optional[List[int]] = Field(None, description="Filter by data source IDs (optional)")
+    pipeline_id: int = Field(..., description="Pipeline ID to use (includes RAG + DataSources)")
     top_k: int = Field(default=10, ge=1, le=100, description="Number of results to return")
     
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "query": "What are the main features of the product?",
-            "rag_id": 1,
-            "datasource_ids": [1, 2],
+            "pipeline_id": 1,
             "top_k": 10
         }
     })
@@ -32,10 +42,12 @@ class SearchRequest(BaseModel):
 class SearchResponse(BaseModel):
     """검색 응답"""
     query: str
-    rag_id: int
+    pipeline_id: int
+    pipeline_type: str = Field(..., description="Pipeline type (normal or test)")
     results: List[RetrievedChunk]
     total: int = Field(..., description="Total number of results")
     retrieval_time: float = Field(..., description="Retrieval time in seconds")
+    comparison: Optional[QueryComparison] = Field(None, description="Comparison with golden chunks (test pipelines only)")
 
 
 class AnswerRequest(SearchRequest):
@@ -43,8 +55,7 @@ class AnswerRequest(SearchRequest):
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "query": "What are the main features of the product?",
-            "rag_id": 1,
-            "datasource_ids": [1, 2],
+            "pipeline_id": 1,
             "top_k": 5
         }
     })

@@ -38,11 +38,12 @@ class DataSourceResponse(DataSourceBase):
     file_size: Optional[int] = None
     content_hash: Optional[str] = None
     status: str
-    metadata: Optional[str] = None
+    file_type: Optional[str] = Field(None, description="File extension (pdf, txt, json, etc.)")
+    source_metadata: Optional[str] = Field(None, alias="source_metadata")
     created_at: datetime
     updated_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class DataSourceListResponse(BaseModel):

@@ -12,6 +12,8 @@ from app.schemas.query import (
     SearchResponse,
     AnswerRequest,
     AnswerResponse,
+    RetrievedChunk,
+    QueryComparison,
 )
 
 logger = structlog.get_logger(__name__)
@@ -32,38 +34,53 @@ def search(
     query_service: QueryService = Depends(get_query_service),
 ):
     """
-    Perform vector search with optional reranking.
+    Perform vector search with optional reranking using a pipeline.
     
     Steps:
-    1. Embed query
-    2. Search Qdrant
-    3. Rerank results (if configured)
-    4. Return top_k results
+    1. Load pipeline (RAG + DataSources or Dataset)
+    2. Embed query
+    3. Search Qdrant
+    4. Rerank results (if configured in RAG)
+    5. For test pipelines: Compare with golden chunks
+    6. Return top_k results
+    
+    **Test Pipeline Queries:**
+    When querying a test pipeline, the response includes a `comparison` field
+    showing how retrieved chunks compare to golden (ground truth) chunks:
+    - Precision@K: Ratio of correct chunks in top-k results
+    - Recall@K: Ratio of golden chunks that were retrieved
+    - Hit Rate: Whether any golden chunk was found
     """
     try:
         result = query_service.search(
-            rag_id=search_request.rag_id,
+            pipeline_id=search_request.pipeline_id,
             query=search_request.query,
-            datasource_ids=search_request.datasource_ids,
             top_k=search_request.top_k,
         )
         
+        # Build comparison if available (test pipelines only)
+        comparison = None
+        if result.comparison:
+            comparison = QueryComparison(**result.comparison)
+        
         return SearchResponse(
             query=result.query,
-            chunks=[
-                {
-                    "id": chunk["id"],
-                    "content": chunk["content"],
-                    "score": chunk["score"],
-                    "datasource_id": chunk["datasource_id"],
-                    "chunk_index": chunk["chunk_index"],
-                    "metadata": chunk["metadata"],
-                }
+            pipeline_id=search_request.pipeline_id,
+            pipeline_type=result.pipeline_type,
+            results=[
+                RetrievedChunk(
+                    chunk_id=str(chunk["id"]),
+                    datasource_id=chunk.get("datasource_id", 0),
+                    content=chunk["content"],
+                    score=chunk["score"],
+                    metadata=chunk.get("metadata"),
+                    is_golden=chunk.get("is_golden"),
+                )
                 for chunk in result.chunks
             ],
-            search_time=result.search_time,
-            rerank_time=result.rerank_time,
-            total_time=result.total_time,
+            total=len(result.chunks),
+            retrieval_time=result.total_time,
+            comparison=comparison,
         )
         
     except ValueError as e:
@@ -82,40 +99,39 @@ def answer(
     query_service: QueryService = Depends(get_query_service),
 ):
     """
-    Perform search and generate answer using LLM.
+    Perform search and generate answer using LLM with a pipeline.
     
     Steps:
-    1. Search for relevant chunks
-    2. Format context
-    3. Generate answer with LLM
-    4. Return answer with sources
+    1. Load pipeline (RAG + DataSources)
+    2. Search for relevant chunks
+    3. Format context
+    4. Generate answer with LLM
+    5. Return answer with sources
     """
     try:
         result = query_service.answer(
-            rag_id=answer_request.rag_id,
+            pipeline_id=answer_request.pipeline_id,
             query=answer_request.query,
-            datasource_ids=answer_request.datasource_ids,
             top_k=answer_request.top_k,
-            llm_endpoint=answer_request.llm_endpoint,
         )
         
         return AnswerResponse(
             query=result["query"],
             answer=result["answer"],
             sources=[
-                {
-                    "id": chunk["id"],
-                    "content": chunk["content"],
-                    "score": chunk["score"],
-                    "datasource_id": chunk["datasource_id"],
-                    "chunk_index": chunk["chunk_index"],
-                    "metadata": chunk["metadata"],
-                }
+                RetrievedChunk(
+                    chunk_id=str(chunk["id"]),
+                    datasource_id=chunk["datasource_id"],
+                    content=chunk["content"],
+                    score=chunk["score"],
+                    metadata=chunk.get("metadata"),
+                )
                 for chunk in result["sources"]
             ],
-            search_time=result["search_time"],
-            rerank_time=result["rerank_time"],
-            total_time=result["total_time"],
+            tokens_used=result.get("tokens_used", 0),
+            generation_time=result["total_time"],
+            retrieval_time=result["search_time"],
+            llm_time=result.get("llm_time", 0.0),
         )
         
     except NotImplementedError as e:

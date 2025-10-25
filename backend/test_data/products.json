@@ -1,0 +1,107 @@
+{
+  "products": [
+    {
+      "id": "PROD-001",
+      "name": "MacBook Pro 16인치",
+      "category": "노트북",
+      "price": 3500000,
+      "specs": {
+        "cpu": "Apple M3 Max",
+        "ram": "32GB",
+        "storage": "1TB SSD",
+        "display": "16.2인치 Liquid Retina XDR"
+      },
+      "description": "프로페셔널을 위한 최고 성능의 노트북. M3 Max 칩으로 강력한 성능을 제공하며, 긴 배터리 수명과 뛰어난 디스플레이가 특징입니다.",
+      "features": [
+        "18시간 배터리",
+        "6 스피커 시스템",
+        "Touch ID",
+        "Thunderbolt 4 포트 3개"
+      ]
+    },
+    {
+      "id": "PROD-002", 
+      "name": "iPad Pro 12.9인치",
+      "category": "태블릿",
+      "price": 1800000,
+      "specs": {
+        "cpu": "Apple M2",
+        "ram": "16GB",
+        "storage": "512GB",
+        "display": "12.9인치 Liquid Retina XDR"
+      },
+      "description": "크리에이티브 작업을 위한 강력한 태블릿. Apple Pencil과 Magic Keyboard를 지원하여 노트북 대체가 가능합니다.",
+      "features": [
+        "ProMotion 120Hz",
+        "Face ID",
+        "4개 스피커",
+        "LiDAR 스캐너"
+      ]
+    },
+    {
+      "id": "PROD-003",
+      "name": "AirPods Pro 2세대",
+      "category": "이어폰",
+      "price": 350000,
+      "specs": {
+        "type": "무선 이어폰",
+        "noise_cancelling": true,
+        "battery": "최대 6시간 (ANC 켜짐)",
+        "charging": "MagSafe, USB-C"
+      },
+      "description": "업그레이드된 노이즈 캔슬링과 투명 모드를 갖춘 프리미엄 무선 이어폰. 공간 오디오와 개인 맞춤 음향을 지원합니다.",
+      "features": [
+        "적응형 투명 모드",
+        "공간 오디오",
+        "IP54 방진방수",
+        "터치 컨트롤"
+      ]
+    },
+    {
+      "id": "PROD-004",
+      "name": "iPhone 15 Pro Max",
+      "category": "스마트폰",
+      "price": 1950000,
+      "specs": {
+        "cpu": "Apple A17 Pro",
+        "ram": "8GB",
+        "storage": "512GB",
+        "display": "6.7인치 Super Retina XDR",
+        "camera": "48MP 메인 + 12MP 울트라와이드 + 12MP 망원"
+      },
+      "description": "최고급 스마트폰. 티타늄 디자인과 강력한 A17 Pro 칩, 프로급 카메라 시스템을 갖추었습니다.",
+      "features": [
+        "액션 버튼",
+        "Always-On 디스플레이",
+        "ProRAW/ProRes 촬영",
+        "5배 광학 줌"
+      ]
+    },
+    {
+      "id": "PROD-005",
+      "name": "Apple Watch Ultra 2",
+      "category": "스마트워치",
+      "price": 1150000,
+      "specs": {
+        "display": "1.92인치 Retina",
+        "battery": "최대 36시간",
+        "water_resistance": "100m",
+        "gps": "듀얼 주파수 GPS"
+      },
+      "description": "극한 환경을 위해 설계된 프리미엄 스마트워치. 등산, 다이빙 등 야외 활동에 최적화되었습니다.",
+      "features": [
+        "티타늄 케이스",
+        "사이렌 기능",
+        "수심 측정",
+        "온도 센서"
+      ]
+    }
+  ],
+  "metadata": {
+    "store": "Apple 공식 스토어",
+    "last_updated": "2024-10-25",
+    "currency": "KRW",
+    "total_products": 5
+  }
+}
+

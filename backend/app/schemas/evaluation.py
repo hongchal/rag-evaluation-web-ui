@@ -5,39 +5,40 @@ from pydantic import BaseModel, Field, ConfigDict
 
 
 class EvaluationCreate(BaseModel):
-    """평가 생성 요청"""
-    name: str = Field(..., min_length=1, max_length=100, description="Evaluation name")
+    """평가 생성 요청 (TEST 파이프라인 기반)
+    
+    단일 평가: pipeline_ids에 1개
+    비교 평가: pipeline_ids에 2개 이상
+    """
+    name: Optional[str] = Field(None, min_length=1, max_length=100, description="Evaluation name")
     description: Optional[str] = Field(None, description="Evaluation description")
-    rag_id: int = Field(..., description="RAG configuration ID")
-    dataset_id: int = Field(..., description="Evaluation dataset ID")
+    pipeline_ids: List[int] = Field(..., min_length=1, description="Test pipeline IDs (single or multiple)")
 
     model_config = ConfigDict(json_schema_extra={
         "example": {
-            "name": "BGE-M3 Evaluation",
-            "description": "Evaluate BGE-M3 with product QA dataset",
-            "rag_id": 1,
-            "dataset_id": 1
+            "name": "FRAMES Dataset Evaluation",
+            "description": "Evaluate test pipeline with FRAMES dataset",
+            "pipeline_ids": [1, 2, 3]
         }
     })
 
 
 class CompareRequest(BaseModel):
-    """RAG 비교 요청"""
-    rag_ids: List[int] = Field(..., min_length=2, description="List of RAG IDs to compare")
-    dataset_id: int = Field(..., description="Evaluation dataset ID")
-    name: Optional[str] = Field(None, description="Comparison name")
+    """Pipeline 비교 요청"""
+    pipeline_ids: List[int] = Field(..., min_length=2, description="Test pipeline IDs to compare (2 or more)")
 
     model_config = ConfigDict(json_schema_extra={
         "example": {
-            "rag_ids": [1, 2, 3],
-            "dataset_id": 1,
-            "name": "BGE-M3 vs Matryoshka vs VLLM"
+            "pipeline_ids": [1, 2, 3]
         }
     })
 
 
 class MetricsResponse(BaseModel):
     """평가 메트릭 응답"""
+    pipeline_id: Optional[int] = Field(None, description="Pipeline ID")
+    pipeline_name: Optional[str] = Field(None, description="Pipeline name")
+    
     ndcg_at_k: float = Field(..., description="NDCG@K score")
     mrr: float = Field(..., description="Mean Reciprocal Rank")
     precision_at_k: float = Field(..., description="Precision@K")
@@ -63,8 +64,7 @@ class EvaluationResponse(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
-    rag_id: int
-    dataset_id: int
+    pipeline_ids: List[int]
     status: str
     progress: float
     current_step: Optional[str] = None
@@ -74,26 +74,19 @@ class EvaluationResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     
-    # Include metrics if completed
-    metrics: Optional[MetricsResponse] = None
+    # Include metrics if completed (list for multiple pipelines)
+    metrics: Optional[List[MetricsResponse]] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class ComparisonItem(BaseModel):
-    """비교 항목"""
-    rag_id: int
-    rag_name: str
-    evaluation_id: int
-    metrics: MetricsResponse
-
-
 class ComparisonResponse(BaseModel):
-    """RAG 비교 응답"""
-    dataset_id: int
-    dataset_name: str
-    comparisons: List[ComparisonItem]
-    best_rag_id: Optional[int] = Field(None, description="Best performing RAG ID")
+    """Pipeline 비교 응답 (metrics의 리스트로 통합)"""
+    evaluation_id: int
+    evaluation_name: str
+    pipeline_count: int
+    metrics: List[MetricsResponse]
+    best_pipeline_id: Optional[int] = Field(None, description="Best performing pipeline ID")
     best_metric: Optional[str] = Field(None, description="Metric used for ranking")
 
 

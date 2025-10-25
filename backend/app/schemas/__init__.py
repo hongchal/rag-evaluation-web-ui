@@ -33,7 +33,6 @@ from app.schemas.evaluation import (
     ComparisonResponse,
     EvaluationListResponse,
     MetricsResponse,
-    ComparisonItem,
 )
 from app.schemas.query import (
     SearchRequest,
@@ -41,6 +40,13 @@ from app.schemas.query import (
     AnswerRequest,
     AnswerResponse,
     RetrievedChunk,
+)
+from app.schemas.pipeline import (
+    NormalPipelineCreate,
+    TestPipelineCreate,
+    PipelineUpdate,
+    PipelineResponse,
+    PipelineListResponse,
 )
 
 __all__ = [
@@ -74,12 +80,17 @@ __all__ = [
     "ComparisonResponse",
     "EvaluationListResponse",
     "MetricsResponse",
-    "ComparisonItem",
     # Query
     "SearchRequest",
     "SearchResponse",
     "AnswerRequest",
     "AnswerResponse",
     "RetrievedChunk",
+    # Pipeline
+    "NormalPipelineCreate",
+    "TestPipelineCreate",
+    "PipelineUpdate",
+    "PipelineResponse",
+    "PipelineListResponse",
 ]
 

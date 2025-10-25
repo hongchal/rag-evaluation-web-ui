@@ -43,31 +43,40 @@ def run_evaluation(
     background_tasks: BackgroundTasks,
     eval_service: EvaluationService = Depends(get_evaluation_service),
 ):
-    """Run an evaluation of a RAG configuration on a dataset."""
+    """Run an evaluation on one or more TEST pipelines."""
     try:
         # Validate inputs
-        from app.models.rag import RAGConfiguration
-        from app.models.evaluation_dataset import EvaluationDataset
+        from app.models.pipeline import Pipeline, PipelineType
         from app.models.evaluation import Evaluation
         
-        rag = eval_service.db.query(RAGConfiguration).filter(
-            RAGConfiguration.id == eval_request.rag_id
-        ).first()
-        if not rag:
-            raise ValueError(f"RAG {eval_request.rag_id} not found")
+        # Validate pipelines
+        pipelines = eval_service.db.query(Pipeline).filter(
+            Pipeline.id.in_(eval_request.pipeline_ids)
+        ).all()
         
-        dataset = eval_service.db.query(EvaluationDataset).filter(
-            EvaluationDataset.id == eval_request.dataset_id
-        ).first()
-        if not dataset:
-            raise ValueError(f"Dataset {eval_request.dataset_id} not found")
+        if len(pipelines) != len(eval_request.pipeline_ids):
+            found_ids = [p.id for p in pipelines]
+            missing = set(eval_request.pipeline_ids) - set(found_ids)
+            raise ValueError(f"Pipelines not found: {missing}")
+        
+        # Check all are TEST pipelines
+        non_test = [p.id for p in pipelines if p.pipeline_type != PipelineType.TEST]
+        if non_test:
+            raise ValueError(f"Only TEST pipelines can be evaluated. Non-TEST: {non_test}")
+        
+        # Generate name if not provided
+        name = eval_request.name
+        if not name:
+            pipeline_names = ", ".join([p.name for p in pipelines])
+            name = f"Evaluation: {pipeline_names}"
         
         # Create evaluation record
         evaluation = Evaluation(
-            name=eval_request.name or f"Evaluation: {rag.name} on {dataset.name}",
+            name=name,
             description=eval_request.description,
-            rag_id=eval_request.rag_id,
-            dataset_id=eval_request.dataset_id,
+            pipeline_ids=eval_request.pipeline_ids,
+            rag_id=None,  # Legacy field
+            dataset_id=None,  # Legacy field
             status="pending",
             progress=0.0,
         )
@@ -75,7 +84,7 @@ def run_evaluation(
         eval_service.db.commit()
         eval_service.db.refresh(evaluation)
         
-        # Run evaluation in background (pass evaluation_id)
+        # Run evaluation in background
         from app.core.database import SessionLocal
         background_tasks.add_task(
             _run_evaluation_task,
@@ -84,8 +93,8 @@ def run_evaluation(
             eval_service.qdrant_service,
         )
         
-        logger.info("evaluation_queued", evaluation_id=evaluation.id)
-        return EvaluationResponse.from_orm(evaluation)
+        logger.info("evaluation_queued", evaluation_id=evaluation.id, pipeline_ids=eval_request.pipeline_ids)
+        return EvaluationResponse.model_validate(evaluation)
         
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -102,11 +111,10 @@ def compare_evaluations(
     compare_request: CompareRequest,
     eval_service: EvaluationService = Depends(get_evaluation_service),
 ):
-    """Compare multiple RAG configurations on the same dataset."""
+    """Compare multiple TEST pipelines."""
     try:
-        comparison = eval_service.compare_rags(
-            compare_request.rag_ids,
-            compare_request.dataset_id,
+        comparison = eval_service.compare_pipelines(
+            compare_request.pipeline_ids,
         )
         
         return ComparisonResponse(**comparison)
@@ -127,13 +135,46 @@ def get_evaluation(
     eval_service: EvaluationService = Depends(get_evaluation_service),
 ):
     """Get evaluation results by ID."""
+    from app.schemas.evaluation import MetricsResponse
+    from app.models.pipeline import Pipeline
+    
     evaluation = eval_service.get_evaluation(evaluation_id)
     if not evaluation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Evaluation {evaluation_id} not found"
         )
-    return EvaluationResponse.from_orm(evaluation)
+    
+    # Build response with metrics
+    response = EvaluationResponse.model_validate(evaluation)
+    
+    # Add metrics from results if available
+    if evaluation.results and evaluation.status == "completed":
+        metrics_list = []
+        for result in evaluation.results:
+            pipeline = None
+            if result.pipeline_id:
+                pipeline = eval_service.db.query(Pipeline).filter(Pipeline.id == result.pipeline_id).first()
+            
+            metrics_list.append(MetricsResponse(
+                pipeline_id=result.pipeline_id,
+                pipeline_name=pipeline.name if pipeline else None,
+                ndcg_at_k=result.ndcg_at_k,
+                mrr=result.mrr,
+                precision_at_k=result.precision_at_k,
+                recall_at_k=result.recall_at_k,
+                hit_rate=result.hit_rate,
+                map_score=result.map_score,
+                chunking_time=result.chunking_time,
+                embedding_time=result.embedding_time,
+                retrieval_time=result.retrieval_time,
+                total_time=result.total_time,
+                num_chunks=result.num_chunks,
+                avg_chunk_size=result.avg_chunk_size,
+            ))
+        response.metrics = metrics_list
+    
+    return response
 
 
 @router.get("/{evaluation_id}/status", response_model=EvaluationResponse)
@@ -172,25 +213,60 @@ def cancel_evaluation(
         )
     
     evaluation = eval_service.get_evaluation(evaluation_id)
-    return EvaluationResponse.from_orm(evaluation)
+    return EvaluationResponse.model_validate(evaluation)
 
 
 @router.get("", response_model=List[EvaluationResponse])
 def list_evaluations(
-    rag_id: Optional[int] = None,
-    dataset_id: Optional[int] = None,
+    pipeline_id: Optional[int] = None,
     skip: int = 0,
     limit: int = 100,
     eval_service: EvaluationService = Depends(get_evaluation_service),
 ):
     """List evaluations with optional filters."""
+    from app.schemas.evaluation import MetricsResponse
+    from app.models.pipeline import Pipeline
+    
     evaluations = eval_service.list_evaluations(
-        rag_id=rag_id,
-        dataset_id=dataset_id,
+        pipeline_id=pipeline_id,
         skip=skip,
         limit=limit,
     )
-    return [EvaluationResponse.from_orm(e) for e in evaluations]
+    
+    # Build responses with metrics
+    responses = []
+    for evaluation in evaluations:
+        response = EvaluationResponse.model_validate(evaluation)
+        
+        # Add metrics if completed
+        if evaluation.results and evaluation.status == "completed":
+            metrics_list = []
+            for result in evaluation.results:
+                pipeline = None
+                if result.pipeline_id:
+                    pipeline = eval_service.db.query(Pipeline).filter(Pipeline.id == result.pipeline_id).first()
+                
+                metrics_list.append(MetricsResponse(
+                    pipeline_id=result.pipeline_id,
+                    pipeline_name=pipeline.name if pipeline else None,
+                    ndcg_at_k=result.ndcg_at_k,
+                    mrr=result.mrr,
+                    precision_at_k=result.precision_at_k,
+                    recall_at_k=result.recall_at_k,
+                    hit_rate=result.hit_rate,
+                    map_score=result.map_score,
+                    chunking_time=result.chunking_time,
+                    embedding_time=result.embedding_time,
+                    retrieval_time=result.retrieval_time,
+                    total_time=result.total_time,
+                    num_chunks=result.num_chunks,
+                    avg_chunk_size=result.avg_chunk_size,
+                ))
+            response.metrics = metrics_list
+        
+        responses.append(response)
+    
+    return responses
 
 
 @router.delete("/{evaluation_id}", status_code=status.HTTP_204_NO_CONTENT)

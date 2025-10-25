@@ -14,10 +14,13 @@ import { Route as QueryRouteImport } from "./routes/query"
 import { Route as EvaluateRouteImport } from "./routes/evaluate"
 import { Route as IndexRouteImport } from "./routes/index"
 import { Route as RagsIndexRouteImport } from "./routes/rags.index"
+import { Route as PipelinesIndexRouteImport } from "./routes/pipelines.index"
 import { Route as DatasourcesIndexRouteImport } from "./routes/datasources.index"
 import { Route as DatasetsIndexRouteImport } from "./routes/datasets.index"
 import { Route as RagsCreateRouteImport } from "./routes/rags.create"
 import { Route as RagsIdRouteImport } from "./routes/rags.$id"
+import { Route as PipelinesCreateRouteImport } from "./routes/pipelines.create"
+import { Route as PipelinesIdRouteImport } from "./routes/pipelines.$id"
 import { Route as EvaluationsCompareRouteImport } from "./routes/evaluations.compare"
 import { Route as EvaluationsIdRouteImport } from "./routes/evaluations.$id"
 
@@ -46,6 +49,11 @@ const RagsIndexRoute = RagsIndexRouteImport.update({
   path: "/rags/",
   getParentRoute: () => rootRouteImport,
 } as any)
+const PipelinesIndexRoute = PipelinesIndexRouteImport.update({
+  id: "/pipelines/",
+  path: "/pipelines/",
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DatasourcesIndexRoute = DatasourcesIndexRouteImport.update({
   id: "/datasources/",
   path: "/datasources/",
@@ -66,6 +74,16 @@ const RagsIdRoute = RagsIdRouteImport.update({
   path: "/rags/$id",
   getParentRoute: () => rootRouteImport,
 } as any)
+const PipelinesCreateRoute = PipelinesCreateRouteImport.update({
+  id: "/pipelines/create",
+  path: "/pipelines/create",
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PipelinesIdRoute = PipelinesIdRouteImport.update({
+  id: "/pipelines/$id",
+  path: "/pipelines/$id",
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EvaluationsCompareRoute = EvaluationsCompareRouteImport.update({
   id: "/evaluations/compare",
   path: "/evaluations/compare",
@@ -84,10 +102,13 @@ export interface FileRoutesByFullPath {
   "/upload": typeof UploadRoute
   "/evaluations/$id": typeof EvaluationsIdRoute
   "/evaluations/compare": typeof EvaluationsCompareRoute
+  "/pipelines/$id": typeof PipelinesIdRoute
+  "/pipelines/create": typeof PipelinesCreateRoute
   "/rags/$id": typeof RagsIdRoute
   "/rags/create": typeof RagsCreateRoute
   "/datasets": typeof DatasetsIndexRoute
   "/datasources": typeof DatasourcesIndexRoute
+  "/pipelines": typeof PipelinesIndexRoute
   "/rags": typeof RagsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -97,10 +118,13 @@ export interface FileRoutesByTo {
   "/upload": typeof UploadRoute
   "/evaluations/$id": typeof EvaluationsIdRoute
   "/evaluations/compare": typeof EvaluationsCompareRoute
+  "/pipelines/$id": typeof PipelinesIdRoute
+  "/pipelines/create": typeof PipelinesCreateRoute
   "/rags/$id": typeof RagsIdRoute
   "/rags/create": typeof RagsCreateRoute
   "/datasets": typeof DatasetsIndexRoute
   "/datasources": typeof DatasourcesIndexRoute
+  "/pipelines": typeof PipelinesIndexRoute
   "/rags": typeof RagsIndexRoute
 }
 export interface FileRoutesById {
@@ -111,10 +135,13 @@ export interface FileRoutesById {
   "/upload": typeof UploadRoute
   "/evaluations/$id": typeof EvaluationsIdRoute
   "/evaluations/compare": typeof EvaluationsCompareRoute
+  "/pipelines/$id": typeof PipelinesIdRoute
+  "/pipelines/create": typeof PipelinesCreateRoute
   "/rags/$id": typeof RagsIdRoute
   "/rags/create": typeof RagsCreateRoute
   "/datasets/": typeof DatasetsIndexRoute
   "/datasources/": typeof DatasourcesIndexRoute
+  "/pipelines/": typeof PipelinesIndexRoute
   "/rags/": typeof RagsIndexRoute
 }
 export interface FileRouteTypes {
@@ -126,10 +153,13 @@ export interface FileRouteTypes {
     | "/upload"
     | "/evaluations/$id"
     | "/evaluations/compare"
+    | "/pipelines/$id"
+    | "/pipelines/create"
     | "/rags/$id"
     | "/rags/create"
     | "/datasets"
     | "/datasources"
+    | "/pipelines"
     | "/rags"
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -139,10 +169,13 @@ export interface FileRouteTypes {
     | "/upload"
     | "/evaluations/$id"
     | "/evaluations/compare"
+    | "/pipelines/$id"
+    | "/pipelines/create"
     | "/rags/$id"
     | "/rags/create"
     | "/datasets"
     | "/datasources"
+    | "/pipelines"
     | "/rags"
   id:
     | "__root__"
@@ -152,10 +185,13 @@ export interface FileRouteTypes {
     | "/upload"
     | "/evaluations/$id"
     | "/evaluations/compare"
+    | "/pipelines/$id"
+    | "/pipelines/create"
     | "/rags/$id"
     | "/rags/create"
     | "/datasets/"
     | "/datasources/"
+    | "/pipelines/"
     | "/rags/"
   fileRoutesById: FileRoutesById
 }
@@ -166,10 +202,13 @@ export interface RootRouteChildren {
   UploadRoute: typeof UploadRoute
   EvaluationsIdRoute: typeof EvaluationsIdRoute
   EvaluationsCompareRoute: typeof EvaluationsCompareRoute
+  PipelinesIdRoute: typeof PipelinesIdRoute
+  PipelinesCreateRoute: typeof PipelinesCreateRoute
   RagsIdRoute: typeof RagsIdRoute
   RagsCreateRoute: typeof RagsCreateRoute
   DatasetsIndexRoute: typeof DatasetsIndexRoute
   DatasourcesIndexRoute: typeof DatasourcesIndexRoute
+  PipelinesIndexRoute: typeof PipelinesIndexRoute
   RagsIndexRoute: typeof RagsIndexRoute
 }
 
@@ -210,6 +249,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof RagsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    "/pipelines/": {
+      id: "/pipelines/"
+      path: "/pipelines"
+      fullPath: "/pipelines"
+      preLoaderRoute: typeof PipelinesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     "/datasources/": {
       id: "/datasources/"
       path: "/datasources"
@@ -238,6 +284,20 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof RagsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    "/pipelines/create": {
+      id: "/pipelines/create"
+      path: "/pipelines/create"
+      fullPath: "/pipelines/create"
+      preLoaderRoute: typeof PipelinesCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    "/pipelines/$id": {
+      id: "/pipelines/$id"
+      path: "/pipelines/$id"
+      fullPath: "/pipelines/$id"
+      preLoaderRoute: typeof PipelinesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     "/evaluations/compare": {
       id: "/evaluations/compare"
       path: "/evaluations/compare"
@@ -262,10 +322,13 @@ const rootRouteChildren: RootRouteChildren = {
   UploadRoute: UploadRoute,
   EvaluationsIdRoute: EvaluationsIdRoute,
   EvaluationsCompareRoute: EvaluationsCompareRoute,
+  PipelinesIdRoute: PipelinesIdRoute,
+  PipelinesCreateRoute: PipelinesCreateRoute,
   RagsIdRoute: RagsIdRoute,
   RagsCreateRoute: RagsCreateRoute,
   DatasetsIndexRoute: DatasetsIndexRoute,
   DatasourcesIndexRoute: DatasourcesIndexRoute,
+  PipelinesIndexRoute: PipelinesIndexRoute,
   RagsIndexRoute: RagsIndexRoute,
 }
 export const routeTree = rootRouteImport

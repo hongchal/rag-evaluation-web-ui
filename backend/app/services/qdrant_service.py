@@ -136,6 +136,10 @@ class QdrantService:
             if ids is None:
                 ids = list(range(len(vectors)))
 
+            # Check if collection uses named vectors (has both dense and sparse)
+            collection_info = self.client.get_collection(collection_name)
+            uses_named_vectors = isinstance(collection_info.config.params.vectors, dict)
+            
             # Build points with hybrid vectors if provided
             if sparse_vectors:
                 points = [
@@ -155,14 +159,25 @@ class QdrantService:
                     )
                 ]
             else:
-                points = [
-                    PointStruct(
-                        id=point_id,
-                        vector=vector,
-                        payload=payload,
-                    )
-                    for point_id, vector, payload in zip(ids, vectors, payloads)
-                ]
+                # If collection uses named vectors, always use "dense" name
+                if uses_named_vectors:
+                    points = [
+                        PointStruct(
+                            id=point_id,
+                            vector={"dense": vector},
+                            payload=payload,
+                        )
+                        for point_id, vector, payload in zip(ids, vectors, payloads)
+                    ]
+                else:
+                    points = [
+                        PointStruct(
+                            id=point_id,
+                            vector=vector,
+                            payload=payload,
+                        )
+                        for point_id, vector, payload in zip(ids, vectors, payloads)
+                    ]
 
             self.client.upsert(
                 collection_name=collection_name,
@@ -220,8 +235,20 @@ class QdrantService:
                     query_filter = Filter(must=must_conditions)
 
             # Hybrid search if sparse vector provided
-            if query_sparse_vector:
+            # Validate sparse vector has both indices and values
+            has_valid_sparse = (
+                query_sparse_vector and 
+                isinstance(query_sparse_vector, dict) and
+                "indices" in query_sparse_vector and 
+                "values" in query_sparse_vector and
+                isinstance(query_sparse_vector["indices"], list) and
+                isinstance(query_sparse_vector["values"], list) and
+                len(query_sparse_vector["indices"]) > 0
+            )
+            
+            if has_valid_sparse:
                 from qdrant_client.models import Prefetch, Query, FusionQuery
+                logger.info("using_hybrid_search", collection=collection_name)
 
                 # Prefetch dense results
                 dense_prefetch = Prefetch(
@@ -259,9 +286,10 @@ class QdrantService:
                 ]
             else:
                 # Standard dense-only search
+                # If collection has named vectors, use "dense" as the vector name
                 results = self.client.search(
                     collection_name=collection_name,
-                    query_vector=query_vector,
+                    query_vector=("dense", query_vector),  # Specify dense vector name
                     limit=top_k,
                     query_filter=query_filter,
                 )
@@ -336,4 +364,32 @@ class QdrantService:
             )
         except Exception as e:
             logger.error("add_chunks_failed", collection=collection_name, error=str(e))
+            raise
+
+    def delete_by_filter(self, collection_name: str, filter_conditions: dict) -> None:
+        """Delete points in a collection matching the provided filter conditions.
+
+        Args:
+            collection_name: Name of the collection
+            filter_conditions: Dict of field -> condition (supports {"$in": [...] } or direct equality)
+        """
+        try:
+            must_conditions = []
+            for key, cond in filter_conditions.items():
+                if isinstance(cond, dict) and "$in" in cond:
+                    must_conditions.append(FieldCondition(key=key, match=MatchAny(any=cond["$in"])))
+                else:
+                    value = cond if not isinstance(cond, dict) else cond.get("$eq")
+                    if value is not None:
+                        must_conditions.append(FieldCondition(key=key, match=MatchValue(value=value)))
+
+            f = Filter(must=must_conditions) if must_conditions else None
+            if f is None:
+                logger.warning("delete_by_filter_called_with_empty_filter", collection=collection_name)
+                return
+
+            self.client.delete(collection_name=collection_name, points_selector=f)
+            logger.info("points_deleted_by_filter", collection=collection_name, filter=filter_conditions)
+        except Exception as e:
+            logger.error("delete_by_filter_failed", collection=collection_name, error=str(e))
             raise

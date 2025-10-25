@@ -10,6 +10,7 @@ from app.models.evaluation_query import EvaluationQuery
 from app.models.evaluation_document import EvaluationDocument
 from app.models.base_document import BaseDocument
 from app.models.base_chunk import BaseChunk
+from app.models.pipeline import Pipeline, PipelineType
 
 __all__ = [
     "Document",
@@ -25,4 +26,6 @@ __all__ = [
     "EvaluationDocument",
     "BaseDocument",
     "BaseChunk",
+    "Pipeline",
+    "PipelineType",
 ]

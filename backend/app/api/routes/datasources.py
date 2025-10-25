@@ -64,6 +64,7 @@ async def upload_datasource(
             source_type=SourceType.FILE,
             source_uri=str(file_path),
             file_size=file_size,
+            file_type=file_extension.lstrip('.'),  # Remove leading dot (e.g., ".pdf" -> "pdf")
             content_hash=content_hash,
             status=SourceStatus.READY,
             metadata={

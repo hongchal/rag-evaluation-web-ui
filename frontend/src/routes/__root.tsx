@@ -34,6 +34,12 @@ const RootLayout = () => (
               Data Sources
             </Link>
             <Link
+              to="/pipelines"
+              className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent [&.active]:bg-accent [&.active]:text-accent-foreground"
+            >
+              Pipelines
+            </Link>
+            <Link
               to="/datasets"
               className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent [&.active]:bg-accent [&.active]:text-accent-foreground"
             >
@@ -41,6 +47,7 @@ const RootLayout = () => (
             </Link>
             <Link
               to="/query"
+              search={{ pipelineId: undefined }}
               className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent [&.active]:bg-accent [&.active]:text-accent-foreground"
             >
               Query

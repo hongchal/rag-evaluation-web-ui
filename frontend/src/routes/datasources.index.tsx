@@ -40,7 +40,9 @@ function DataSourcesPage() {
     }
   }
 
-  const getFileIcon = (fileType: string) => {
+  const getFileIcon = (fileType?: string) => {
+    if (!fileType) return '📁'
+    
     switch (fileType.toLowerCase()) {
       case 'pdf':
         return '📄'

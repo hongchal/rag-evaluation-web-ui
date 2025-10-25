@@ -1,21 +1,21 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
-import { api, type RAGConfiguration, type SearchResponse } from '../lib/api'
+import { api, type Pipeline, type SearchResponse } from '../lib/api'
 
 export const Route = createFileRoute('/query')({
   component: QueryTest,
   validateSearch: (search: Record<string, unknown>) => {
     return {
-      ragId: search.ragId as number | undefined,
+      pipelineId: search.pipelineId as number | undefined,
     }
   },
 })
 
 function QueryTest() {
-  const { ragId: initialRagId } = Route.useSearch()
+  const { pipelineId: initialPipelineId } = Route.useSearch()
   
-  const [rags, setRags] = useState<RAGConfiguration[]>([])
-  const [selectedRagId, setSelectedRagId] = useState<number | null>(initialRagId || null)
+  const [pipelines, setPipelines] = useState<Pipeline[]>([])
+  const [selectedPipelineId, setSelectedPipelineId] = useState<number | null>(initialPipelineId || null)
   const [query, setQuery] = useState('')
   const [topK, setTopK] = useState(5)
   const [loading, setLoading] = useState(false)
@@ -23,25 +23,25 @@ function QueryTest() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    loadRAGs()
+    loadPipelines()
   }, [])
 
-  const loadRAGs = async () => {
+  const loadPipelines = async () => {
     try {
-      const data = await api.listRAGs()
-      setRags(data)
-      if (data.length > 0 && !selectedRagId) {
-        setSelectedRagId(data[0].id)
+      const items = await api.listPipelines()
+      setPipelines(items)
+      if (items.length > 0 && !selectedPipelineId) {
+        setSelectedPipelineId(items[0].id)
       }
     } catch (err) {
-      console.error('Failed to load RAGs:', err)
+      console.error('Failed to load pipelines:', err)
     }
   }
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!selectedRagId || !query.trim()) {
+    if (!selectedPipelineId || !query.trim()) {
       return
     }
 
@@ -51,7 +51,7 @@ function QueryTest() {
 
     try {
       const response = await api.search({
-        rag_id: selectedRagId,
+        pipeline_id: selectedPipelineId,
         query: query.trim(),
         top_k: topK,
       })
@@ -76,18 +76,18 @@ function QueryTest() {
             <form onSubmit={handleSearch} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  RAG Configuration
+                  Pipeline
                 </label>
                 <select
-                  value={selectedRagId || ''}
-                  onChange={(e) => setSelectedRagId(Number(e.target.value))}
+                  value={selectedPipelineId || ''}
+                  onChange={(e) => setSelectedPipelineId(Number(e.target.value))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
-                  <option value="">Select RAG...</option>
-                  {rags.map((rag) => (
-                    <option key={rag.id} value={rag.id}>
-                      {rag.name}
+                  <option value="">Select Pipeline...</option>
+                  {pipelines.map((pl) => (
+                    <option key={pl.id} value={pl.id}>
+                      {pl.name} ({pl.pipeline_type})
                     </option>
                   ))}
                 </select>
@@ -123,7 +123,7 @@ function QueryTest() {
 
               <button
                 type="submit"
-                disabled={loading || !selectedRagId || !query.trim()}
+                disabled={loading || !selectedPipelineId || !query.trim()}
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
               >
                 {loading ? 'Searching...' : 'Search'}
@@ -135,24 +135,34 @@ function QueryTest() {
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">Performance</h3>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Search Time:</span>
-                    <span className="font-medium">{result.search_time.toFixed(3)}s</span>
-                  </div>
-                  {result.rerank_time && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Rerank Time:</span>
-                      <span className="font-medium">{result.rerank_time.toFixed(3)}s</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Total Time:</span>
-                    <span className="font-medium">{result.total_time.toFixed(3)}s</span>
+                    <span className="text-gray-500">Retrieval Time:</span>
+                    <span className="font-medium">{result.retrieval_time.toFixed(3)}s</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Results:</span>
-                    <span className="font-medium">{result.chunks.length}</span>
+                    <span className="text-gray-500">Total Results:</span>
+                    <span className="font-medium">{result.total}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Pipeline Type:</span>
+                    <span className="font-medium">{result.pipeline_type}</span>
                   </div>
                 </div>
+                {result.comparison && (
+                  <div className="mt-4 space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Precision@K:</span>
+                      <span className="font-medium">{result.comparison.precision_at_k.toFixed(3)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Recall@K:</span>
+                      <span className="font-medium">{result.comparison.recall_at_k.toFixed(3)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Hit Rate:</span>
+                      <span className="font-medium">{result.comparison.hit_rate.toFixed(3)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -186,10 +196,10 @@ function QueryTest() {
               </div>
 
               <div>
-                <h2 className="text-xl font-semibold mb-4">Results ({result.chunks.length})</h2>
+                <h2 className="text-xl font-semibold mb-4">Results ({result.total})</h2>
                 <div className="space-y-4">
-                  {result.chunks.map((chunk, index) => (
-                    <div key={chunk.id} className="bg-white shadow rounded-lg p-6">
+                  {result.results.map((chunk, index) => (
+                    <div key={chunk.chunk_id} className="bg-white shadow rounded-lg p-6">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center space-x-3">
                           <span className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full font-semibold">
@@ -200,7 +210,7 @@ function QueryTest() {
                               Score: <span className="font-medium text-gray-900">{chunk.score.toFixed(4)}</span>
                             </p>
                             <p className="text-xs text-gray-400">
-                              DataSource: {chunk.datasource_id} | Chunk: {chunk.chunk_index}
+                              DataSource: {chunk.datasource_id}
                             </p>
                           </div>
                         </div>
@@ -208,7 +218,7 @@ function QueryTest() {
 
                       <p className="text-gray-700 whitespace-pre-wrap">{chunk.content}</p>
 
-                      {Object.keys(chunk.metadata).length > 0 && (
+                      {chunk.metadata && Object.keys(chunk.metadata).length > 0 && (
                         <details className="mt-3">
                           <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
                             Metadata
@@ -217,6 +227,13 @@ function QueryTest() {
                             {JSON.stringify(chunk.metadata, null, 2)}
                           </pre>
                         </details>
+                      )}
+                      {typeof chunk.is_golden === 'boolean' && (
+                        <div className="mt-2 text-xs">
+                          <span className={`px-2 py-1 rounded ${chunk.is_golden ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                            {chunk.is_golden ? 'GOLDEN MATCH' : 'NON-GOLDEN'}
+                          </span>
+                        </div>
                       )}
                     </div>
                   ))}
