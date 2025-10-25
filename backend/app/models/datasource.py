@@ -36,7 +36,6 @@ class DataSource(Base):
 
     # File metadata
     file_size = Column(BigInteger, nullable=True)  # bytes
-    file_type = Column(String(50), nullable=True)  # File extension (pdf, txt, json, etc.)
     content_hash = Column(String(64), nullable=True, index=True)  # SHA-256
 
     # Status

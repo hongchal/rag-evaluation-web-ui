@@ -1,5 +1,6 @@
 """DataSource API endpoints."""
 
+import json
 from typing import List
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
@@ -64,13 +65,12 @@ async def upload_datasource(
             source_type=SourceType.FILE,
             source_uri=str(file_path),
             file_size=file_size,
-            file_type=file_extension.lstrip('.'),  # Remove leading dot (e.g., ".pdf" -> "pdf")
             content_hash=content_hash,
-            status=SourceStatus.READY,
-            metadata={
+            status=SourceStatus.ACTIVE,
+            source_metadata=json.dumps({
                 "file_extension": file_extension,
                 "original_filename": file.filename,
-            }
+            })
         )
         
         db.add(datasource)

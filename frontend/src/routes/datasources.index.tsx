@@ -139,18 +139,15 @@ function DataSourcesPage() {
                 <tr key={ds.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex items-center">
-                      <span className="text-2xl mr-3">{getFileIcon(ds.file_type)}</span>
+                      <span className="text-2xl mr-3">{getFileIcon(ds.source_type)}</span>
                       <div>
                         <p className="text-sm font-medium text-gray-900">{ds.name}</p>
-                        {ds.description && (
-                          <p className="text-xs text-gray-500 line-clamp-1">{ds.description}</p>
-                        )}
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                      {ds.file_type.toUpperCase()}
+                      {ds.source_type?.toUpperCase() || 'FILE'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -188,15 +185,15 @@ function DataSourcesPage() {
             </p>
           </div>
           <div className="bg-white shadow rounded-lg p-4">
-            <p className="text-sm text-gray-500 mb-1">PDF Files</p>
+            <p className="text-sm text-gray-500 mb-1">File Sources</p>
             <p className="text-2xl font-bold text-gray-900">
-              {datasources.filter(ds => ds.file_type === 'pdf').length}
+              {datasources.filter(ds => ds.source_type === 'file').length}
             </p>
           </div>
           <div className="bg-white shadow rounded-lg p-4">
-            <p className="text-sm text-gray-500 mb-1">TXT Files</p>
+            <p className="text-sm text-gray-500 mb-1">URL Sources</p>
             <p className="text-2xl font-bold text-gray-900">
-              {datasources.filter(ds => ds.file_type === 'txt').length}
+              {datasources.filter(ds => ds.source_type === 'url').length}
             </p>
           </div>
         </div>

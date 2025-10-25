@@ -38,8 +38,7 @@ class DataSourceResponse(DataSourceBase):
     file_size: Optional[int] = None
     content_hash: Optional[str] = None
     status: str
-    file_type: Optional[str] = Field(None, description="File extension (pdf, txt, json, etc.)")
-    source_metadata: Optional[str] = Field(None, alias="source_metadata")
+    source_metadata: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

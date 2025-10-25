@@ -9,6 +9,7 @@ from app.models.rag import RAGConfiguration
 from app.models.datasource import DataSource, SourceStatus
 from app.models.evaluation_dataset import EvaluationDataset
 from app.models.base_document import BaseDocument
+from app.models.chunk import Chunk
 from app.schemas.pipeline import NormalPipelineCreate, TestPipelineCreate, PipelineUpdate
 from app.services.qdrant_service import QdrantService
 from app.services.rag_factory import RAGFactory
@@ -546,13 +547,14 @@ class PipelineService:
                 base_doc = BaseDocument(
                     id=doc.doc_id,
                     content=doc.content,
-                    filename=doc.title or doc.doc_id,
-                    file_type="evaluation_dataset",
                     source_type="evaluation_dataset",
+                    source_uri=f"dataset_{dataset.id}_doc_{doc.doc_id}",
                     metadata={
                         "dataset_id": dataset.id,
                         "doc_id": doc.doc_id,
                         "title": doc.title or "",
+                        "filename": doc.title or doc.doc_id,
+                        "file_type": "evaluation_dataset",
                     }
                 )
                 
