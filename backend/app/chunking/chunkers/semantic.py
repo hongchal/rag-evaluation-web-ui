@@ -43,7 +43,10 @@ class SemanticChunker(BaseChunker):
         chunk_overlap: int = None,
         similarity_threshold: float = 0.75,
         min_chunk_tokens: int = 100,
-        max_chunk_tokens: int = 800
+        max_chunk_tokens: int = 800,
+        # Backward compatibility
+        threshold: float = None,
+        **kwargs  # Ignore any other unexpected params
     ):
         """
         Initialize semantic chunker.
@@ -56,7 +59,12 @@ class SemanticChunker(BaseChunker):
                                   Lower = more chunks, Higher = fewer chunks
             min_chunk_tokens: Minimum tokens per chunk
             max_chunk_tokens: Maximum tokens per chunk (force split if exceeded)
+            threshold: Alias for similarity_threshold (backward compatibility)
         """
+        # Backward compatibility: map 'threshold' to 'similarity_threshold'
+        if threshold is not None:
+            similarity_threshold = threshold
+        
         chunk_size = chunk_size if chunk_size is not None else settings.chunk_size
         chunk_overlap = chunk_overlap if chunk_overlap is not None else settings.chunk_overlap
 
@@ -231,8 +239,9 @@ class SemanticChunker(BaseChunker):
         logger.info("semantic_chunking_document", document_id=document.id)
 
         try:
-            # Enrich content with title
-            enriched_content = f"# {document.title}\n\n{document.content}"
+            # Enrich content with title (use filename or metadata title)
+            title = document.metadata.get("title") or document.filename or "Document"
+            enriched_content = f"# {title}\n\n{document.content}"
 
             # Split into sentences
             sentences = self._split_into_sentences(enriched_content)
@@ -267,7 +276,7 @@ class SemanticChunker(BaseChunker):
                 "semantic_chunking_completed",
                 document_id=document.id,
                 chunk_count=len(chunks),
-                avg_tokens=sum(c.token_count for c in chunks) / len(chunks) if chunks else 0
+                avg_tokens=sum(c.num_tokens or 0 for c in chunks) / len(chunks) if chunks else 0
             )
 
             return chunks

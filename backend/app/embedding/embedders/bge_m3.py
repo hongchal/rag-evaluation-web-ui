@@ -113,9 +113,22 @@ class BGEM3Embedder:
                 return_colbert_vecs=False
             )
 
+            # Convert lexical_weights to Qdrant sparse vector format
+            sparse_vectors = []
+            for lexical_weight in embeddings["lexical_weights"]:
+                if lexical_weight:  # Check if not empty
+                    indices = list(lexical_weight.keys())
+                    values = list(lexical_weight.values())
+                    sparse_vectors.append({
+                        "indices": indices,
+                        "values": values
+                    })
+                else:
+                    sparse_vectors.append({"indices": [], "values": []})
+
             return {
                 "dense": embeddings["dense_vecs"].tolist(),
-                "sparse": embeddings["lexical_weights"]
+                "sparse": sparse_vectors
             }
         except Exception as e:
             logger.error("embed_texts_failed", text_count=len(texts), error=str(e))
@@ -177,9 +190,18 @@ class BGEM3Embedder:
                 return_colbert_vecs=False
             )
 
+            # Convert lexical_weights to Qdrant sparse vector format
+            sparse_vector = {}
+            if embeddings["lexical_weights"] and embeddings["lexical_weights"][0]:
+                lexical_weight = embeddings["lexical_weights"][0]
+                sparse_vector = {
+                    "indices": list(lexical_weight.keys()),
+                    "values": list(lexical_weight.values())
+                }
+
             return {
                 "dense": embeddings["dense_vecs"][0].tolist(),
-                "sparse": embeddings["lexical_weights"][0] if embeddings["lexical_weights"] else {}
+                "sparse": sparse_vector
             }
         except Exception as e:
             logger.error("embed_query_failed", query=query[:100], error=str(e))

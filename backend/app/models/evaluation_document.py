@@ -20,7 +20,7 @@ class EvaluationDocument(Base):
     
     # Document content
     content = Column(Text, nullable=False)
-    title = Column(String(500), nullable=True)
+    title = Column(Text, nullable=True)  # Changed to Text to support long titles
     
     # Document metadata
     extra_metadata = Column(JSON, nullable=True, default=dict)

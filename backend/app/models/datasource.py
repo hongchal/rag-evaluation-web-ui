@@ -24,6 +24,13 @@ class SourceStatus(str, enum.Enum):
     ERROR = "error"
 
 
+class ProcessorType(str, enum.Enum):
+    """문서 프로세서 타입"""
+    PYPDF2 = "pypdf2"
+    PDFPLUMBER = "pdfplumber"
+    DOCLING = "docling"
+
+
 class DataSource(Base):
     """데이터 소스 모델"""
 
@@ -38,6 +45,14 @@ class DataSource(Base):
     file_size = Column(BigInteger, nullable=True)  # bytes
     content_hash = Column(String(64), nullable=True, index=True)  # SHA-256
 
+    # Processing metadata
+    processor_type = Column(
+        SQLEnum(ProcessorType),
+        default=ProcessorType.PDFPLUMBER,
+        nullable=True,
+        index=True
+    )  # PDF 처리 방식
+
     # Status
     status = Column(SQLEnum(SourceStatus), default=SourceStatus.PENDING, nullable=False, index=True)
 
@@ -47,6 +62,9 @@ class DataSource(Base):
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    documents = relationship("Document", back_populates="datasource", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<DataSource(id={self.id}, name='{self.name}', type='{self.source_type}')>"

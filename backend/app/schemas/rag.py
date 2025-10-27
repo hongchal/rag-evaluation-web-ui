@@ -70,8 +70,11 @@ class RAGCreate(RAGBase):
                 "chunking": {
                     "module": "semantic",
                     "params": {
-                        "breakpoint_threshold_type": "percentile",
-                        "breakpoint_threshold_amount": 95
+                        "similarity_threshold": 0.75,
+                        "min_chunk_tokens": 100,
+                        "max_chunk_tokens": 800,
+                        "embedder_module": "bge_m3",
+                        "embedder_params": {}
                     }
                 },
                 "embedding": {
@@ -185,13 +188,13 @@ class RAGCreate(RAGBase):
             },
             {
                 "name": "Late Chunking with Jina v3",
-                "description": "Late chunking strategy (chunking only, uses Jina v3 model internally)",
+                "description": "Late chunking strategy - sentence-level chunking optimized for Jina embeddings",
                 "chunking": {
                     "module": "late_chunking",
                     "params": {
-                        "model_name": "jinaai/jina-embeddings-v3",
-                        "max_length": 8192,
-                        "late_chunking": True
+                        "sentences_per_chunk": 3,
+                        "min_chunk_tokens": 50,
+                        "max_chunk_tokens": 512
                     }
                 },
                 "embedding": {
@@ -212,12 +215,35 @@ class RAGCreate(RAGBase):
 
 
 class RAGUpdate(BaseModel):
-    """RAG 수정 요청 (부분 업데이트)"""
-    name: Optional[str] = Field(None, min_length=1, max_length=255)
-    description: Optional[str] = None
-    chunking: Optional[ChunkingConfig] = None
-    embedding: Optional[EmbeddingConfig] = None
-    reranking: Optional[RerankingConfig] = None
+    """
+    RAG 수정 요청 (파라미터만 수정 가능)
+    
+    수정 가능:
+    - name, description (기본 정보)
+    - chunking_params, embedding_params, reranking_params (모듈 파라미터)
+    
+    수정 불가:
+    - chunking_module, embedding_module, reranking_module (모듈 타입)
+    - collection_name (이미 생성된 컬렉션)
+    """
+    name: Optional[str] = Field(None, min_length=1, max_length=255, description="RAG 설정 이름")
+    description: Optional[str] = Field(None, description="RAG 설정 설명")
+    chunking_params: Optional[Dict[str, Any]] = Field(None, description="청킹 모듈 파라미터 (예: chunk_size, chunk_overlap)")
+    embedding_params: Optional[Dict[str, Any]] = Field(None, description="임베딩 모듈 파라미터 (예: model_name, base_url)")
+    reranking_params: Optional[Dict[str, Any]] = Field(None, description="리랭킹 모듈 파라미터 (예: model_name, top_k)")
+    
+    model_config = ConfigDict(json_schema_extra={
+        "examples": [
+            {
+                "name": "Updated RAG Name",
+                "description": "Updated description",
+                "embedding_params": {
+                    "model_name": "Qwen/Qwen3-Embedding-0.6B",
+                    "base_url": "https://lgo25jv8raz7uy-8000.proxy.runpod.net"
+                }
+            }
+        ]
+    })
 
 
 class RAGResponse(RAGBase):

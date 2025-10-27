@@ -135,20 +135,29 @@ class RAGService:
             )
         
         # Try to create modules to validate params
-        try:
-            RAGFactory.create_chunker(chunking_module, chunking_params)
-        except Exception as e:
-            raise ValueError(f"Invalid chunking params: {e}")
+        # Note: This validation is skipped for now to avoid loading heavy models during config creation
+        # Models will be loaded lazily when actually used
+        # TODO: Add lightweight parameter validation without loading models
         
-        try:
-            RAGFactory.create_embedder(embedding_module, embedding_params)
-        except Exception as e:
-            raise ValueError(f"Invalid embedding params: {e}")
+        # try:
+        #     RAGFactory.create_chunker(chunking_module, chunking_params)
+        # except Exception as e:
+        #     raise ValueError(f"Invalid chunking params: {e}")
         
-        try:
-            RAGFactory.create_reranker(reranking_module, reranking_params)
-        except Exception as e:
-            raise ValueError(f"Invalid reranking params: {e}")
+        # try:
+        #     RAGFactory.create_embedder(embedding_module, embedding_params)
+        # except Exception as e:
+        #     raise ValueError(f"Invalid embedding params: {e}")
+        
+        # try:
+        #     RAGFactory.create_reranker(reranking_module, reranking_params)
+        # except Exception as e:
+        #     raise ValueError(f"Invalid reranking params: {e}")
+        
+        logger.info("rag_params_validation_skipped", 
+                   chunking=chunking_module, 
+                   embedding=embedding_module,
+                   reranking=reranking_module)
 
     @staticmethod
     def get_rag(db: Session, rag_id: int) -> Optional[RAGConfiguration]:
@@ -175,43 +184,47 @@ class RAGService:
         rag_id: int,
         name: Optional[str] = None,
         description: Optional[str] = None,
-        chunking_module: Optional[str] = None,
         chunking_params: Optional[dict] = None,
-        embedding_module: Optional[str] = None,
         embedding_params: Optional[dict] = None,
-        reranking_module: Optional[str] = None,
         reranking_params: Optional[dict] = None,
     ) -> Optional[RAGConfiguration]:
         """
-        Update RAG configuration.
+        Update RAG configuration (파라미터만 수정 가능).
+        
+        수정 가능한 필드:
+        - name, description: 기본 정보
+        - chunking_params, embedding_params, reranking_params: 각 모듈의 파라미터
+        
+        수정 불가능한 필드:
+        - chunking_module, embedding_module, reranking_module: 모듈 타입 (이미 인덱싱된 파이프라인에 영향)
+        - collection_name: Qdrant 컬렉션 이름
         
         Returns:
             Updated RAGConfiguration or None if not found
+            
+        Raises:
+            ValueError: If params validation fails
         """
         rag = RAGService.get_rag(db, rag_id)
         if not rag:
             return None
         
-        # Update fields if provided
+        # Update basic info
         if name is not None:
             rag.name = name
         if description is not None:
             rag.description = description
-        if chunking_module is not None:
-            rag.chunking_module = chunking_module
-        if chunking_params is not None:
-            rag.chunking_params = chunking_params
-        if embedding_module is not None:
-            rag.embedding_module = embedding_module
-        if embedding_params is not None:
-            rag.embedding_params = embedding_params
-        if reranking_module is not None:
-            rag.reranking_module = reranking_module
-        if reranking_params is not None:
-            rag.reranking_params = reranking_params
         
-        # Validate if modules changed
-        if any([chunking_module, embedding_module, reranking_module]):
+        # Update module parameters
+        if chunking_params is not None:
+            rag.chunking_params = {**rag.chunking_params, **chunking_params}  # Merge
+        if embedding_params is not None:
+            rag.embedding_params = {**rag.embedding_params, **embedding_params}  # Merge
+        if reranking_params is not None:
+            rag.reranking_params = {**rag.reranking_params, **reranking_params}  # Merge
+        
+        # Validate updated configuration
+        if any([chunking_params, embedding_params, reranking_params]):
             RAGService.validate_rag_params(
                 rag.chunking_module, rag.chunking_params,
                 rag.embedding_module, rag.embedding_params,

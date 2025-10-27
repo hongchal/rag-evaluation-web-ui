@@ -1,7 +1,10 @@
 """Data Source Schemas"""
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 from pydantic import BaseModel, Field, ConfigDict
+
+
+ProcessorTypeOption = Literal["pypdf2", "pdfplumber", "docling"]
 
 
 class DataSourceBase(BaseModel):
@@ -14,13 +17,18 @@ class DataSourceBase(BaseModel):
 class DataSourceCreate(DataSourceBase):
     """데이터 소스 생성 요청"""
     metadata: Optional[str] = Field(None, description="Additional metadata (JSON string)")
+    processor_type: Optional[ProcessorTypeOption] = Field(
+        "pdfplumber",
+        description="PDF processor type (pypdf2: fast/basic, pdfplumber: better quality, docling: advanced layout)"
+    )
 
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "name": "Product Documentation",
             "source_type": "file",
             "source_uri": "/uploads/product_docs.pdf",
-            "metadata": "{\"category\": \"documentation\", \"version\": \"1.0\"}"
+            "metadata": "{\"category\": \"documentation\", \"version\": \"1.0\"}",
+            "processor_type": "pdfplumber"
         }
     })
 
@@ -39,6 +47,7 @@ class DataSourceResponse(DataSourceBase):
     content_hash: Optional[str] = None
     status: str
     source_metadata: Optional[str] = None
+    processor_type: Optional[str] = Field(None, description="PDF processor used")
     created_at: datetime
     updated_at: datetime
 
@@ -57,5 +66,6 @@ class UploadResponse(BaseModel):
     filename: str
     file_size: int
     content_hash: str
+    processor_type: Optional[str] = Field(None, description="PDF processor used")
     message: str = "File uploaded successfully"
 

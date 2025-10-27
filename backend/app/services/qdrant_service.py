@@ -54,8 +54,51 @@ class QdrantService:
             collection_names = [c.name for c in collections]
 
             if collection_name in collection_names:
-                logger.info("collection_exists", collection=collection_name)
-                return
+                # Verify collection schema is correct
+                collection_info = self.client.get_collection(collection_name)
+                
+                # Check if dense vector config exists
+                vectors_config = collection_info.config.params.vectors
+                
+                # Handle both named vectors (dict) and simple vectors (VectorParams)
+                if isinstance(vectors_config, dict):
+                    # Named vectors (e.g., {"dense": VectorParams(...)})
+                    has_dense = "dense" in vectors_config
+                    if has_dense:
+                        dense_size = vectors_config["dense"].size
+                        if dense_size != vector_size:
+                            logger.warning(
+                                "collection_schema_mismatch",
+                                collection=collection_name,
+                                expected_size=vector_size,
+                                actual_size=dense_size,
+                                action="deleting_and_recreating"
+                            )
+                            self.delete_collection(collection_name)
+                        else:
+                            logger.info("collection_exists_with_correct_schema", collection=collection_name)
+                            return
+                    else:
+                        logger.warning(
+                            "collection_missing_dense_vector",
+                            collection=collection_name,
+                            action="deleting_and_recreating"
+                        )
+                        self.delete_collection(collection_name)
+                else:
+                    # Simple VectorParams
+                    if vectors_config.size != vector_size:
+                        logger.warning(
+                            "collection_schema_mismatch",
+                            collection=collection_name,
+                            expected_size=vector_size,
+                            actual_size=vectors_config.size,
+                            action="deleting_and_recreating"
+                        )
+                        self.delete_collection(collection_name)
+                    else:
+                        logger.info("collection_exists_with_correct_schema", collection=collection_name)
+                        return
 
             # Create collection with hybrid search support
             if enable_hybrid:
@@ -297,13 +340,26 @@ class QdrantService:
                 ]
             else:
                 # Standard dense-only search
-                # If collection has named vectors, use "dense" as the vector name
-                results = self.client.search(
-                    collection_name=collection_name,
-                    query_vector=("dense", query_vector),  # Specify dense vector name
-                    limit=top_k,
-                    query_filter=query_filter,
-                )
+                # Check if collection uses named vectors or simple format
+                collection_info = self.client.get_collection(collection_name)
+                uses_named_vectors = isinstance(collection_info.config.params.vectors, dict)
+                
+                if uses_named_vectors:
+                    # Named vectors: use ("dense", query_vector)
+                    results = self.client.search(
+                        collection_name=collection_name,
+                        query_vector=("dense", query_vector),
+                        limit=top_k,
+                        query_filter=query_filter,
+                    )
+                else:
+                    # Simple format: use query_vector directly
+                    results = self.client.search(
+                        collection_name=collection_name,
+                        query_vector=query_vector,
+                        limit=top_k,
+                        query_filter=query_filter,
+                    )
 
                 return [
                     {

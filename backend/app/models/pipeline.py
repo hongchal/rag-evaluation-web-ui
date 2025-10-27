@@ -1,7 +1,7 @@
 """Pipeline Model - RAG Configuration + DataSource(s) or Dataset"""
 from datetime import datetime
 from typing import Optional, List
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table, Enum as SQLEnum, JSON, Float
 from sqlalchemy.orm import relationship
 import enum
 
@@ -21,6 +21,14 @@ class PipelineType(str, enum.Enum):
     """Pipeline 타입"""
     NORMAL = "normal"  # DataSource 기반 (일반 쿼리용)
     TEST = "test"      # EvaluationDataset 기반 (테스트용)
+
+
+class PipelineStatus(str, enum.Enum):
+    """Pipeline 인덱싱 상태"""
+    PENDING = "pending"      # 생성됨, 인덱싱 대기 중
+    INDEXING = "indexing"    # 인덱싱 진행 중
+    READY = "ready"          # 인덱싱 완료, 사용 가능
+    FAILED = "failed"        # 인덱싱 실패
 
 
 class Pipeline(Base):
@@ -63,6 +71,17 @@ class Pipeline(Base):
         nullable=True,
         index=True
     )
+    
+    # Indexing status
+    status = Column(
+        SQLEnum(PipelineStatus),
+        nullable=False,
+        default=PipelineStatus.PENDING,
+        index=True
+    )
+    indexing_progress = Column(Float, nullable=True)  # 0.0 ~ 100.0
+    indexing_stats = Column(JSON, nullable=True)  # {"total_docs": 10, "indexed_docs": 5, "total_chunks": 100}
+    indexing_error = Column(Text, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

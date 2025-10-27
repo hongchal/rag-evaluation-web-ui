@@ -15,18 +15,35 @@ function PipelineDetail() {
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
-    loadPipeline()
+    loadPipeline(false) // Initial load with loading state
   }, [id])
 
-  const loadPipeline = async () => {
+  // Auto-refresh when pipeline is indexing or pending
+  useEffect(() => {
+    if (!pipeline || (pipeline.status !== 'indexing' && pipeline.status !== 'pending')) {
+      return
+    }
+
+    const interval = setInterval(() => {
+      loadPipeline(true) // Silent refresh without loading state
+    }, 3000) // Refresh every 3 seconds
+
+    return () => clearInterval(interval)
+  }, [pipeline])
+
+  const loadPipeline = async (silent: boolean = false) => {
     try {
-      setLoading(true)
+      if (!silent) {
+        setLoading(true)
+      }
       const data = await api.getPipeline(Number(id))
       setPipeline(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load pipeline')
     } finally {
-      setLoading(false)
+      if (!silent) {
+        setLoading(false)
+      }
     }
   }
 
@@ -81,7 +98,7 @@ function PipelineDetail() {
         </Link>
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-2 flex-wrap">
               <h1 className="text-3xl font-bold">{pipeline.name}</h1>
               <span
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -92,15 +109,99 @@ function PipelineDetail() {
               >
                 {pipeline.pipeline_type === 'normal' ? 'NORMAL' : 'TEST'}
               </span>
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  pipeline.status === 'pending'
+                    ? 'bg-yellow-100 text-yellow-700'
+                    : pipeline.status === 'indexing'
+                    ? 'bg-blue-100 text-blue-700'
+                    : pipeline.status === 'ready'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-red-100 text-red-700'
+                }`}
+              >
+                {pipeline.status === 'pending' && '⏳ 대기 중'}
+                {pipeline.status === 'indexing' && '🔄 인덱싱 중'}
+                {pipeline.status === 'ready' && '✅ 사용 가능'}
+                {pipeline.status === 'failed' && '❌ 실패'}
+              </span>
             </div>
             {pipeline.description && (
-              <p className="text-gray-600">{pipeline.description}</p>
+              <p className="text-gray-600 mb-3">{pipeline.description}</p>
+            )}
+            
+            {/* Indexing Progress Card */}
+            {(pipeline.status === 'indexing' || pipeline.status === 'pending') && (
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-blue-900">
+                    {pipeline.status === 'pending' ? '인덱싱 대기 중...' : '인덱싱 진행 중...'}
+                  </span>
+                  {pipeline.indexing_progress != null && (
+                    <span className="text-sm font-medium text-blue-700">
+                      {pipeline.indexing_progress.toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+                {pipeline.indexing_progress != null && (
+                  <div className="w-full bg-blue-200 rounded-full h-2.5">
+                    <div
+                      className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                      style={{ width: `${pipeline.indexing_progress}%` }}
+                    ></div>
+                  </div>
+                )}
+                <p className="text-xs text-blue-700 mt-2">
+                  페이지가 자동으로 새로고침됩니다...
+                </p>
+              </div>
+            )}
+
+            {/* Indexing Error */}
+            {pipeline.status === 'failed' && pipeline.indexing_error && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm font-medium text-red-900 mb-1">인덱싱 실패</p>
+                <p className="text-sm text-red-700">{pipeline.indexing_error}</p>
+              </div>
+            )}
+
+            {/* Indexing Stats */}
+            {pipeline.status === 'ready' && pipeline.indexing_stats && (
+              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm font-medium text-green-900 mb-2">인덱싱 완료</p>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  {pipeline.indexing_stats.total_chunks && (
+                    <div>
+                      <span className="text-green-700">총 청크:</span>{' '}
+                      <span className="font-medium text-green-900">
+                        {pipeline.indexing_stats.total_chunks.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  {pipeline.indexing_stats.total_documents && (
+                    <div>
+                      <span className="text-green-700">총 문서:</span>{' '}
+                      <span className="font-medium text-green-900">
+                        {pipeline.indexing_stats.total_documents.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  {pipeline.indexing_stats.elapsed_seconds && (
+                    <div>
+                      <span className="text-green-700">소요 시간:</span>{' '}
+                      <span className="font-medium text-green-900">
+                        {pipeline.indexing_stats.elapsed_seconds.toFixed(1)}초
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
           <button
             onClick={handleDelete}
-            disabled={deleting}
-            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-300"
+            disabled={deleting || pipeline.status === 'indexing'}
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             {deleting ? 'Deleting...' : 'Delete Pipeline'}
           </button>
@@ -246,26 +347,32 @@ function PipelineDetail() {
         {/* Actions */}
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Actions</h2>
-          <div className="flex gap-3">
-            {pipeline.pipeline_type === 'normal' && (
-              <Link
-                to="/query"
-                search={{ pipelineId: pipeline.id }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Query this Pipeline
-              </Link>
-            )}
-            {pipeline.pipeline_type === 'test' && (
-              <Link
-                to="/evaluate"
-                search={{ pipeline_ids: [pipeline.id] }}
-                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
-              >
-                Evaluate this Pipeline
-              </Link>
-            )}
-          </div>
+          {pipeline.status !== 'ready' ? (
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
+              인덱싱이 완료된 후 파이프라인을 사용할 수 있습니다.
+            </div>
+          ) : (
+            <div className="flex gap-3">
+              {pipeline.pipeline_type === 'normal' && (
+                <Link
+                  to="/query"
+                  search={{ pipelineId: pipeline.id }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Query this Pipeline
+                </Link>
+              )}
+              {pipeline.pipeline_type === 'test' && (
+                <Link
+                  to="/evaluate"
+                  search={{ pipeline_ids: [pipeline.id] }}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                >
+                  Evaluate this Pipeline
+                </Link>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

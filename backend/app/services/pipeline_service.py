@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 import structlog
 import time
 
-from app.models.pipeline import Pipeline, PipelineType
+from app.models.pipeline import Pipeline, PipelineType, PipelineStatus
 from app.models.rag import RAGConfiguration
 from app.models.datasource import DataSource, SourceStatus
 from app.models.evaluation_dataset import EvaluationDataset
@@ -28,18 +28,19 @@ class PipelineService:
 
     def create_normal_pipeline(
         self,
-        pipeline_data: NormalPipelineCreate,
-        auto_index: bool = True
+        pipeline_data: NormalPipelineCreate
     ) -> Pipeline:
         """
         Normal Pipeline 생성 (DataSource 기반)
         
+        파이프라인을 PENDING 상태로 생성하고 즉시 반환합니다.
+        인덱싱은 백그라운드 태스크로 별도 실행됩니다.
+        
         Args:
             pipeline_data: Pipeline 생성 데이터
-            auto_index: 자동으로 인덱싱 수행 여부 (default: True)
             
         Returns:
-            생성된 Pipeline
+            생성된 Pipeline (status: PENDING)
             
         Raises:
             ValueError: RAG 또는 DataSource가 존재하지 않을 때
@@ -70,13 +71,14 @@ class PipelineService:
                 inactive_ids=[ds.id for ds in inactive_datasources]
             )
 
-        # Create pipeline
+        # Create pipeline in PENDING status
         pipeline = Pipeline(
             name=pipeline_data.name,
             description=pipeline_data.description,
             pipeline_type=PipelineType.NORMAL,
             rag_id=pipeline_data.rag_id,
             dataset_id=None,
+            status=PipelineStatus.PENDING,
             datasources=datasources
         )
         
@@ -89,37 +91,27 @@ class PipelineService:
             pipeline_id=pipeline.id,
             name=pipeline.name,
             rag_id=pipeline.rag_id,
-            datasource_count=len(datasources)
+            datasource_count=len(datasources),
+            status=pipeline.status
         )
-        
-        # Auto index if requested and qdrant_service is available
-        if auto_index and self.qdrant_service:
-            try:
-                self._index_pipeline_datasources(pipeline)
-            except Exception as e:
-                logger.error(
-                    "pipeline_indexing_failed",
-                    pipeline_id=pipeline.id,
-                    error=str(e)
-                )
-                # Don't fail pipeline creation, just log the error
         
         return pipeline
 
     def create_test_pipeline(
         self,
-        pipeline_data: TestPipelineCreate,
-        auto_index: bool = True
+        pipeline_data: TestPipelineCreate
     ) -> Pipeline:
         """
         Test Pipeline 생성 (EvaluationDataset 기반)
         
+        파이프라인을 PENDING 상태로 생성하고 즉시 반환합니다.
+        인덱싱은 백그라운드 태스크로 별도 실행됩니다.
+        
         Args:
             pipeline_data: Pipeline 생성 데이터
-            auto_index: 자동으로 인덱싱 수행 여부 (default: True)
             
         Returns:
-            생성된 Pipeline
+            생성된 Pipeline (status: PENDING)
             
         Raises:
             ValueError: RAG 또는 Dataset이 존재하지 않을 때
@@ -138,13 +130,14 @@ class PipelineService:
         if not dataset:
             raise ValueError(f"Evaluation dataset {pipeline_data.dataset_id} not found")
 
-        # Create pipeline
+        # Create pipeline in PENDING status
         pipeline = Pipeline(
             name=pipeline_data.name,
             description=pipeline_data.description,
             pipeline_type=PipelineType.TEST,
             rag_id=pipeline_data.rag_id,
             dataset_id=dataset.id,
+            status=PipelineStatus.PENDING,
         )
         
         self.db.add(pipeline)
@@ -157,20 +150,9 @@ class PipelineService:
             name=pipeline.name,
             rag_id=pipeline.rag_id,
             dataset_id=dataset.id,
-            dataset_name=dataset.name
+            dataset_name=dataset.name,
+            status=pipeline.status
         )
-        
-        # Auto index if requested and qdrant_service is available
-        if auto_index and self.qdrant_service:
-            try:
-                self._index_pipeline_dataset(pipeline)
-            except Exception as e:
-                logger.error(
-                    "pipeline_indexing_failed",
-                    pipeline_id=pipeline.id,
-                    error=str(e)
-                )
-                # Don't fail pipeline creation, just log the error
         
         return pipeline
 
@@ -184,6 +166,7 @@ class PipelineService:
 
     def list_pipelines(
         self,
+        pipeline_type: Optional[str] = None,
         rag_id: Optional[int] = None,
         datasource_id: Optional[int] = None,
         skip: int = 0,
@@ -193,6 +176,7 @@ class PipelineService:
         Pipeline 목록 조회
         
         Args:
+            pipeline_type: Pipeline 타입으로 필터링 ('normal' or 'test')
             rag_id: RAG ID로 필터링 (optional)
             datasource_id: DataSource ID로 필터링 (optional)
             skip: 건너뛸 개수
@@ -202,6 +186,12 @@ class PipelineService:
             (pipelines, total_count)
         """
         query = self.db.query(Pipeline)
+        
+        if pipeline_type is not None:
+            # Convert string to PipelineType enum
+            pipeline_type_lower = pipeline_type.lower()
+            if pipeline_type_lower in [pt.value for pt in PipelineType]:
+                query = query.filter(Pipeline.pipeline_type == PipelineType(pipeline_type_lower))
         
         if rag_id is not None:
             query = query.filter(Pipeline.rag_id == rag_id)
@@ -262,6 +252,77 @@ class PipelineService:
         logger.info("pipeline_updated", pipeline_id=pipeline_id)
         
         return pipeline
+
+    def index_pipeline(self, pipeline_id: int) -> bool:
+        """
+        Pipeline 인덱싱 수행 (백그라운드 태스크용)
+        
+        Args:
+            pipeline_id: Pipeline ID
+            
+        Returns:
+            인덱싱 성공 여부
+        """
+        pipeline = self.get_pipeline(pipeline_id)
+        if not pipeline:
+            logger.error("pipeline_not_found_for_indexing", pipeline_id=pipeline_id)
+            return False
+        
+        if not self.qdrant_service:
+            logger.error("qdrant_service_not_available", pipeline_id=pipeline_id)
+            pipeline.status = PipelineStatus.FAILED
+            pipeline.indexing_error = "QdrantService is not available"
+            self.db.commit()
+            return False
+        
+        # Update status to INDEXING
+        pipeline.status = PipelineStatus.INDEXING
+        pipeline.indexing_progress = 0.0
+        pipeline.indexing_stats = {"status": "started"}
+        self.db.commit()
+        
+        logger.info(
+            "pipeline_indexing_started",
+            pipeline_id=pipeline.id,
+            pipeline_type=pipeline.pipeline_type
+        )
+        
+        try:
+            # Perform indexing based on pipeline type
+            if pipeline.pipeline_type == PipelineType.NORMAL:
+                stats = self._index_pipeline_datasources(pipeline)
+            else:  # TEST
+                stats = self._index_pipeline_dataset(pipeline)
+            
+            # Update status to READY
+            pipeline.status = PipelineStatus.READY
+            pipeline.indexing_progress = 100.0
+            pipeline.indexing_stats = stats
+            pipeline.indexing_error = None
+            self.db.commit()
+            
+            logger.info(
+                "pipeline_indexing_completed",
+                pipeline_id=pipeline.id,
+                stats=stats
+            )
+            
+            return True
+            
+        except Exception as e:
+            logger.error(
+                "pipeline_indexing_failed",
+                pipeline_id=pipeline.id,
+                error=str(e),
+                exc_info=True
+            )
+            
+            # Update status to FAILED
+            pipeline.status = PipelineStatus.FAILED
+            pipeline.indexing_error = str(e)
+            self.db.commit()
+            
+            return False
 
     def delete_pipeline(self, pipeline_id: int) -> bool:
         """
@@ -356,13 +417,19 @@ class PipelineService:
         rag = pipeline.rag
         collection_name = rag.collection_name
         
-        # Create chunker and embedder
-        chunker = RAGFactory.create_chunker(rag.chunking_module, rag.chunking_params)
+        # Create embedder first (needed for semantic chunker)
         embedder = RAGFactory.create_embedder(rag.embedding_module, rag.embedding_params)
+        
+        # Create chunker (pass embedder for semantic chunking)
+        chunker = RAGFactory.create_chunker(rag.chunking_module, rag.chunking_params, embedder=embedder)
         
         # Ensure Qdrant collection exists
         if not self.qdrant_service.collection_exists(collection_name):
-            vector_size = embedder.EMBEDDING_DIM
+            # Get vector size from embedder (support both EMBEDDING_DIM and dimension property)
+            vector_size = getattr(embedder, 'EMBEDDING_DIM', None) or getattr(embedder, 'dimension', None)
+            if vector_size is None:
+                raise ValueError(f"Cannot determine embedding dimension for {rag.embedding_module}")
+            
             # Enable hybrid search for BGE-M3 (dense + sparse vectors)
             enable_hybrid = (rag.embedding_module == "bge_m3")
             self.qdrant_service.create_collection(collection_name, vector_size, enable_hybrid=enable_hybrid)
@@ -386,7 +453,20 @@ class PipelineService:
                 )
                 
                 from pathlib import Path
+                from app.core.config import settings
+                
                 path = Path(datasource.source_uri)
+                
+                # Convert to absolute path if relative
+                if not path.is_absolute():
+                    # Assume path is relative to backend directory
+                    backend_dir = Path(__file__).parent.parent.parent
+                    path = backend_dir / path
+                
+                logger.info("resolving_datasource_path", original=datasource.source_uri, resolved=str(path))
+                
+                # Get processor_type from datasource (default to pdfplumber)
+                processor_type = datasource.processor_type.value if datasource.processor_type else "pdfplumber"
 
                 # Build list of documents from file(s)
                 documents: list[BaseDocument] = []
@@ -397,9 +477,17 @@ class PipelineService:
                             continue
                         if fp.suffix.lower() not in {".txt", ".pdf", ".json"}:
                             continue
-                        documents.extend(DocumentLoader.load_file(str(fp), datasource_id=datasource.id))
+                        documents.extend(DocumentLoader.load_file(
+                            str(fp), 
+                            datasource_id=datasource.id,
+                            processor_type=processor_type
+                        ))
                 else:
-                    documents.extend(DocumentLoader.load_file(str(path), datasource_id=datasource.id))
+                    documents.extend(DocumentLoader.load_file(
+                        str(path), 
+                        datasource_id=datasource.id,
+                        processor_type=processor_type
+                    ))
 
                 if not documents:
                     logger.warning("no_documents_loaded_for_datasource", datasource_id=datasource.id)
@@ -424,6 +512,18 @@ class PipelineService:
                         if isinstance(first_sparse, dict) and "indices" in first_sparse and "values" in first_sparse:
                             if isinstance(first_sparse["indices"], list) and isinstance(first_sparse["values"], list):
                                 valid_sparse = sparse_vectors
+                                logger.info(
+                                    "sparse_vectors_validated",
+                                    count=len(sparse_vectors),
+                                    first_indices_count=len(first_sparse["indices"]),
+                                    datasource_id=datasource.id
+                                )
+                            else:
+                                logger.warning("sparse_vectors_invalid_format", type_indices=type(first_sparse.get("indices")), type_values=type(first_sparse.get("values")))
+                        else:
+                            logger.warning("sparse_vectors_missing_keys", keys=list(first_sparse.keys()) if isinstance(first_sparse, dict) else type(first_sparse))
+                    else:
+                        logger.warning("sparse_vectors_none_or_empty", is_none=sparse_vectors is None, is_list=isinstance(sparse_vectors, list), length=len(sparse_vectors) if isinstance(sparse_vectors, list) else 0)
 
                     # Payload extras merged per chunk
                     payload_extra = {
@@ -460,7 +560,7 @@ class PipelineService:
                             document_id=doc.id,
                             chunk_index=idx,
                             content=ch.content,
-                            metadata=ch.metadata or {},
+                            chunk_metadata=ch.metadata or {},
                             vector_id=vector_id,
                             token_count=None,  # TODO: Calculate token count if needed
                             char_count=len(ch.content)
@@ -537,13 +637,19 @@ class PipelineService:
         dataset = pipeline.dataset
         collection_name = rag.collection_name
         
-        # Create chunker and embedder
-        chunker = RAGFactory.create_chunker(rag.chunking_module, rag.chunking_params)
+        # Create embedder first (needed for semantic chunker)
         embedder = RAGFactory.create_embedder(rag.embedding_module, rag.embedding_params)
+        
+        # Create chunker (pass embedder for semantic chunking)
+        chunker = RAGFactory.create_chunker(rag.chunking_module, rag.chunking_params, embedder=embedder)
         
         # Ensure Qdrant collection exists
         if not self.qdrant_service.collection_exists(collection_name):
-            vector_size = embedder.EMBEDDING_DIM
+            # Get vector size from embedder (support both EMBEDDING_DIM and dimension property)
+            vector_size = getattr(embedder, 'EMBEDDING_DIM', None) or getattr(embedder, 'dimension', None)
+            if vector_size is None:
+                raise ValueError(f"Cannot determine embedding dimension for {rag.embedding_module}")
+            
             # Enable hybrid search for BGE-M3 (dense + sparse vectors)
             enable_hybrid = (rag.embedding_module == "bge_m3")
             self.qdrant_service.create_collection(collection_name, vector_size, enable_hybrid=enable_hybrid)
@@ -594,6 +700,18 @@ class PipelineService:
                     if isinstance(first_sparse, dict) and "indices" in first_sparse and "values" in first_sparse:
                         if isinstance(first_sparse["indices"], list) and isinstance(first_sparse["values"], list):
                             valid_sparse_list = sparse_vectors
+                            logger.info(
+                                "sparse_vectors_validated",
+                                count=len(sparse_vectors),
+                                first_indices_count=len(first_sparse["indices"]),
+                                dataset_id=dataset.id
+                            )
+                        else:
+                            logger.warning("sparse_vectors_invalid_format", type_indices=type(first_sparse.get("indices")), type_values=type(first_sparse.get("values")))
+                    else:
+                        logger.warning("sparse_vectors_missing_keys", keys=list(first_sparse.keys()) if isinstance(first_sparse, dict) else type(first_sparse))
+                else:
+                    logger.warning("sparse_vectors_none_or_empty", is_none=sparse_vectors is None, is_list=isinstance(sparse_vectors, list), length=len(sparse_vectors) if isinstance(sparse_vectors, list) else 0)
                 
                 # Prepare points for Qdrant (including pipeline_id)
                 for i, (chunk, embedding) in enumerate(zip(chunks, dense_vectors)):

@@ -13,18 +13,67 @@ function PipelineList() {
   const [filter, setFilter] = useState<'all' | 'normal' | 'test'>('all')
 
   useEffect(() => {
-    loadPipelines()
+    loadPipelines(false) // Initial load or filter change with loading state
   }, [filter])
 
-  const loadPipelines = async () => {
+  // Auto-refresh when there are indexing/pending pipelines
+  useEffect(() => {
+    const hasIndexingPipelines = pipelines.some(
+      (p) => p.status === 'indexing' || p.status === 'pending'
+    )
+
+    if (!hasIndexingPipelines) return
+
+    const interval = setInterval(() => {
+      loadPipelines(true) // Silent refresh without loading state
+    }, 5000) // Refresh every 5 seconds
+
+    return () => clearInterval(interval)
+  }, [pipelines, filter])
+
+  const loadPipelines = async (silent: boolean = false) => {
     try {
-      setLoading(true)
+      if (!silent) {
+        setLoading(true)
+      }
       const data = await api.listPipelines(filter === 'all' ? undefined : filter)
       setPipelines(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load pipelines')
     } finally {
-      setLoading(false)
+      if (!silent) {
+        setLoading(false)
+      }
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-700'
+      case 'indexing':
+        return 'bg-blue-100 text-blue-700'
+      case 'ready':
+        return 'bg-green-100 text-green-700'
+      case 'failed':
+        return 'bg-red-100 text-red-700'
+      default:
+        return 'bg-gray-100 text-gray-700'
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return '대기 중'
+      case 'indexing':
+        return '인덱싱 중'
+      case 'ready':
+        return '사용 가능'
+      case 'failed':
+        return '실패'
+      default:
+        return status
     }
   }
 
@@ -96,7 +145,7 @@ function PipelineList() {
               : 'bg-white border border-gray-300 hover:bg-gray-50'
           }`}
         >
-          Normal (Query)
+          Normal
         </button>
         <button
           onClick={() => setFilter('test')}
@@ -106,7 +155,7 @@ function PipelineList() {
               : 'bg-white border border-gray-300 hover:bg-gray-50'
           }`}
         >
-          Test (Evaluation)
+          Test
         </button>
       </div>
 
@@ -129,7 +178,7 @@ function PipelineList() {
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <h2 className="text-xl font-semibold">{pipeline.name}</h2>
                     <span
                       className={`px-2 py-1 text-xs rounded-full ${
@@ -140,11 +189,43 @@ function PipelineList() {
                     >
                       {pipeline.pipeline_type === 'normal' ? 'NORMAL' : 'TEST'}
                     </span>
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full ${getStatusColor(
+                        pipeline.status
+                      )}`}
+                    >
+                      {getStatusLabel(pipeline.status)}
+                    </span>
                   </div>
                   {pipeline.description && (
                     <p className="text-sm text-gray-600 mb-3">
                       {pipeline.description}
                     </p>
+                  )}
+                  
+                  {/* Indexing progress bar */}
+                  {pipeline.status === 'indexing' && pipeline.indexing_progress != null && (
+                    <div className="mb-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs text-gray-600">인덱싱 진행률:</span>
+                        <span className="text-xs font-medium text-blue-600">
+                          {pipeline.indexing_progress.toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all"
+                          style={{ width: `${pipeline.indexing_progress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Error message */}
+                  {pipeline.status === 'failed' && pipeline.indexing_error && (
+                    <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                      <strong>에러:</strong> {pipeline.indexing_error}
+                    </div>
                   )}
                 </div>
               </div>

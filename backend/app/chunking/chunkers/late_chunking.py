@@ -31,6 +31,10 @@ class LateChunkingWrapper(BaseChunker):
         sentences_per_chunk: int = 3,
         min_chunk_tokens: int = 50,
         max_chunk_tokens: int = 500,
+        # Backward compatibility: accept chunk_size and ignore other common params
+        chunk_size: int = None,
+        chunk_overlap: int = None,
+        **kwargs  # Ignore any other unexpected params
     ):
         """
         Initialize Late Chunking Wrapper.
@@ -39,7 +43,14 @@ class LateChunkingWrapper(BaseChunker):
             sentences_per_chunk: Number of sentences to group per chunk
             min_chunk_tokens: Minimum tokens per chunk
             max_chunk_tokens: Maximum tokens per chunk
+            chunk_size: (Optional) For compatibility - mapped to max_chunk_tokens
+            chunk_overlap: (Optional) Ignored - kept for compatibility
+            **kwargs: Additional parameters (ignored)
         """
+        # Use chunk_size as max_chunk_tokens if provided
+        if chunk_size is not None:
+            max_chunk_tokens = chunk_size
+        
         self.sentences_per_chunk = sentences_per_chunk
         self.min_chunk_tokens = min_chunk_tokens
         self.max_chunk_tokens = max_chunk_tokens

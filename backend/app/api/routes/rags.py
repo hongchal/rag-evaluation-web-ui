@@ -10,9 +10,10 @@ from app.schemas.rag import (
     RAGCreate,
     RAGUpdate,
     RAGResponse,
+    RAGListResponse,
 )
 
-router = APIRouter(prefix="/api/v1/rags", tags=["rags"])
+router = APIRouter(prefix="/api/rags", tags=["rags"])
 
 
 @router.post("", response_model=RAGResponse, status_code=status.HTTP_201_CREATED)
@@ -26,19 +27,19 @@ def create_rag(
             db=db,
             name=rag_data.name,
             description=rag_data.description,
-            chunking_module=rag_data.chunking_module,
-            chunking_params=rag_data.chunking_params,
-            embedding_module=rag_data.embedding_module,
-            embedding_params=rag_data.embedding_params,
-            reranking_module=rag_data.reranking_module,
-            reranking_params=rag_data.reranking_params,
+            chunking_module=rag_data.chunking.module,
+            chunking_params=rag_data.chunking.params,
+            embedding_module=rag_data.embedding.module,
+            embedding_params=rag_data.embedding.params,
+            reranking_module=rag_data.reranking.module,
+            reranking_params=rag_data.reranking.params,
         )
         return RAGResponse.from_orm(rag)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.get("", response_model=List[RAGResponse])
+@router.get("", response_model=RAGListResponse)
 def list_rags(
     skip: int = 0,
     limit: int = 100,
@@ -46,7 +47,8 @@ def list_rags(
 ):
     """List all RAG configurations."""
     rags = RAGService.list_rags(db, skip=skip, limit=limit)
-    return [RAGResponse.from_orm(rag) for rag in rags]
+    items = [RAGResponse.from_orm(rag) for rag in rags]
+    return RAGListResponse(total=len(items), items=items)
 
 
 @router.get("/{rag_id}", response_model=RAGResponse)
@@ -64,24 +66,31 @@ def get_rag(
     return RAGResponse.from_orm(rag)
 
 
-@router.put("/{rag_id}", response_model=RAGResponse)
+@router.patch("/{rag_id}", response_model=RAGResponse)
 def update_rag(
     rag_id: int,
     rag_data: RAGUpdate,
     db: Session = Depends(get_db),
 ):
-    """Update a RAG configuration."""
+    """
+    Update RAG configuration (파라미터만 수정 가능).
+    
+    수정 가능:
+    - name, description
+    - embedding_params (예: model_name, base_url 등)
+    - chunking_params, reranking_params
+    
+    수정 불가:
+    - 모듈 타입 (chunking_module, embedding_module, reranking_module)
+    """
     try:
         rag = RAGService.update_rag(
             db=db,
             rag_id=rag_id,
             name=rag_data.name,
             description=rag_data.description,
-            chunking_module=rag_data.chunking_module,
             chunking_params=rag_data.chunking_params,
-            embedding_module=rag_data.embedding_module,
             embedding_params=rag_data.embedding_params,
-            reranking_module=rag_data.reranking_module,
             reranking_params=rag_data.reranking_params,
         )
         if not rag:

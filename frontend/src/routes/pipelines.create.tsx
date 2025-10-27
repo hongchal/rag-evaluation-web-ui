@@ -89,8 +89,9 @@ function CreatePipeline() {
               dataset_id: datasetId!,
             }
 
-      await api.createPipeline(pipelineData)
-      navigate({ to: '/pipelines' })
+      const createdPipeline = await api.createPipeline(pipelineData)
+      // Navigate to the created pipeline's detail page to show indexing status
+      navigate({ to: '/pipelines/$id', params: { id: String(createdPipeline.id) } })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create pipeline')
     } finally {
@@ -230,7 +231,7 @@ function CreatePipeline() {
                   {datasources.map((ds) => (
                     <label
                       key={ds.id}
-                      className="flex items-start gap-3 p-3 rounded hover:bg-gray-50 cursor-pointer"
+                      className="flex items-start gap-3 p-3 rounded hover:bg-gray-50 cursor-pointer border border-transparent hover:border-gray-200 transition"
                     >
                       <input
                         type="checkbox"
@@ -238,10 +239,57 @@ function CreatePipeline() {
                         onChange={() => toggleDatasource(ds.id)}
                         className="mt-1"
                       />
-                      <div className="flex-1">
-                        <div className="font-medium">{ds.name}</div>
-                        <div className="text-sm text-gray-600">
-                          Type: {ds.source_type} | Status: {ds.status}
+                      <div className="flex-1 min-w-0">
+                        {/* Data Source Name */}
+                        <div className="font-medium text-gray-900 mb-1">{ds.name}</div>
+                        
+                        {/* File Path (if different from name) */}
+                        {ds.source_uri && ds.source_uri.split('/').pop() !== ds.name && (
+                          <div className="text-xs text-gray-500 mb-1 truncate" title={ds.source_uri}>
+                            📄 {ds.source_uri.split('/').pop()}
+                          </div>
+                        )}
+                        
+                        {/* Metadata Line */}
+                        <div className="flex items-center gap-2 flex-wrap text-xs">
+                          {/* Processor Badge */}
+                          {ds.processor_type && (
+                            <span className={`px-2 py-0.5 rounded-full font-medium ${
+                              ds.processor_type === 'docling' 
+                                ? 'bg-purple-100 text-purple-800' 
+                                : ds.processor_type === 'pdfplumber' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {ds.processor_type === 'pypdf2' && '⚡ PyPDF2'}
+                              {ds.processor_type === 'pdfplumber' && '✅ pdfplumber'}
+                              {ds.processor_type === 'docling' && '🚀 Docling'}
+                            </span>
+                          )}
+                          
+                          {/* Type Badge */}
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full font-medium">
+                            {ds.source_type}
+                          </span>
+                          
+                          {/* Status Badge */}
+                          <span className={`px-2 py-0.5 rounded-full font-medium ${
+                            ds.status === 'active' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {ds.status}
+                          </span>
+                          
+                          {/* File Size */}
+                          {ds.file_size && (
+                            <span className="text-gray-500">
+                              {ds.file_size < 1024 * 1024 
+                                ? `${(ds.file_size / 1024).toFixed(1)} KB`
+                                : `${(ds.file_size / (1024 * 1024)).toFixed(1)} MB`
+                              }
+                            </span>
+                          )}
                         </div>
                       </div>
                     </label>
@@ -271,7 +319,7 @@ function CreatePipeline() {
               <option value="">Select a dataset</option>
               {datasets.map((ds) => (
                 <option key={ds.id} value={ds.id}>
-                  {ds.name} ({ds.queries?.length || 0} queries, {ds.documents?.length || 0} docs)
+                  {ds.name} ({ds.num_queries || 0} queries, {ds.num_documents || 0} docs)
                 </option>
               ))}
             </select>
@@ -305,9 +353,24 @@ function CreatePipeline() {
 
       {submitting && (
         <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded">
-          <p className="text-sm text-blue-700">
-            ⏳ Creating pipeline and indexing data... This may take a few moments.
-          </p>
+          <div className="flex items-start gap-3">
+            <div className="animate-spin text-2xl">⚙️</div>
+            <div className="flex-1">
+              <p className="font-semibold text-blue-900 mb-2">
+                파이프라인 생성 및 데이터 인덱싱 중...
+              </p>
+              <div className="space-y-1 text-sm text-blue-700">
+                <p>✅ 1. 파이프라인 설정 저장 중...</p>
+                <p>📄 2. 데이터 소스 로딩 중...</p>
+                <p>✂️ 3. 문서 청킹 (Chunking) 진행 중...</p>
+                <p>🔢 4. 임베딩 (Embedding) 생성 중...</p>
+                <p>💾 5. Qdrant 벡터 DB에 저장 중...</p>
+              </div>
+              <p className="mt-3 text-xs text-blue-600">
+                💡 대용량 문서의 경우 수 분이 소요될 수 있습니다. 잠시만 기다려주세요.
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>

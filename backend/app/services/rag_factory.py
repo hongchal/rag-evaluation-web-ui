@@ -28,15 +28,35 @@ class RAGFactory:
     # Singleton instances for embedders (모델 중복 로딩 방지)
     _embedder_instances = {}
 
-    @staticmethod
-    def create_chunker(module: str, params: dict) -> Any:
-        """Chunker 생성"""
+    @classmethod
+    def create_chunker(cls, module: str, params: dict, embedder=None) -> Any:
+        """
+        Chunker 생성
+        
+        Args:
+            module: Chunker module name
+            params: Chunker parameters
+            embedder: Embedder instance (optional, can be overridden by params)
+        """
         if module == "recursive":
             return RecursiveChunker(**params)
         elif module == "hierarchical":
             return HierarchicalChunker(**params)
         elif module == "semantic":
-            return SemanticChunker(**params)
+            # Semantic chunker requires an embedder
+            # Check if custom embedder is specified in params
+            params_copy = params.copy()
+            if "embedder_module" in params_copy:
+                embedder_module = params_copy.pop("embedder_module")
+                embedder_params = params_copy.pop("embedder_params", {})
+                embedder = cls.create_embedder(embedder_module, embedder_params)
+            
+            if embedder is None:
+                raise ValueError(
+                    "Embedder must be provided for semantic chunker. "
+                    "Either pass embedder parameter or specify 'embedder_module' in params."
+                )
+            return SemanticChunker(embedder=embedder, **params_copy)
         elif module == "late_chunking":
             return LateChunkingWrapper(**params)
         else:
@@ -82,14 +102,19 @@ class RAGFactory:
     @classmethod
     def create_rag(cls, config) -> Tuple[Any, Any, BaseReranker]:
         """RAG Configuration으로부터 전체 모듈 생성"""
-        chunker = cls.create_chunker(
-            config.chunking_module,
-            config.chunking_params
-        )
+        # Create embedder first (needed for semantic chunker)
         embedder = cls.create_embedder(
             config.embedding_module,
             config.embedding_params
         )
+        
+        # Create chunker (pass embedder for semantic chunking)
+        chunker = cls.create_chunker(
+            config.chunking_module,
+            config.chunking_params,
+            embedder=embedder
+        )
+        
         reranker = cls.create_reranker(
             config.reranking_module,
             config.reranking_params

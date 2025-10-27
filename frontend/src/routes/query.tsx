@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
-import { api, type Pipeline, type SearchResponse } from '../lib/api'
+import { api, type Pipeline, type SearchResponse, type EvaluationQuery } from '../lib/api'
 
 export const Route = createFileRoute('/query')({
   component: QueryTest,
@@ -21,10 +21,24 @@ function QueryTest() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<SearchResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  
+  // For test pipelines: evaluation queries
+  const [evaluationQueries, setEvaluationQueries] = useState<EvaluationQuery[]>([])
+  const [loadingQueries, setLoadingQueries] = useState(false)
 
   useEffect(() => {
     loadPipelines()
   }, [])
+
+  // Load evaluation queries when a test pipeline is selected
+  useEffect(() => {
+    const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId)
+    if (selectedPipeline && selectedPipeline.pipeline_type === 'test' && selectedPipeline.dataset) {
+      loadEvaluationQueries(selectedPipeline.dataset.id)
+    } else {
+      setEvaluationQueries([])
+    }
+  }, [selectedPipelineId, pipelines])
 
   const loadPipelines = async () => {
     try {
@@ -35,6 +49,19 @@ function QueryTest() {
       }
     } catch (err) {
       console.error('Failed to load pipelines:', err)
+    }
+  }
+
+  const loadEvaluationQueries = async (datasetId: number) => {
+    try {
+      setLoadingQueries(true)
+      const queries = await api.getDatasetQueries(datasetId)
+      setEvaluationQueries(queries)
+    } catch (err) {
+      console.error('Failed to load evaluation queries:', err)
+      setEvaluationQueries([])
+    } finally {
+      setLoadingQueries(false)
     }
   }
 
@@ -107,6 +134,45 @@ function QueryTest() {
                 />
               </div>
 
+              {/* Evaluation Questions (for test pipelines) */}
+              {pipelines.find(p => p.id === selectedPipelineId)?.pipeline_type === 'test' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    📋 평가 질문 선택 (선택사항)
+                  </label>
+                  {loadingQueries ? (
+                    <div className="text-sm text-gray-500 py-2">Loading questions...</div>
+                  ) : evaluationQueries.length > 0 ? (
+                    <div className="max-h-48 overflow-y-auto border border-gray-300 rounded-md">
+                      {evaluationQueries.slice(0, 50).map((eq) => (
+                        <button
+                          key={eq.id}
+                          type="button"
+                          onClick={() => setQuery(eq.query)}
+                          className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-gray-200 last:border-b-0 text-sm"
+                        >
+                          <div className="font-medium text-gray-900 line-clamp-2">
+                            {eq.query}
+                          </div>
+                          {eq.difficulty && (
+                            <span className="text-xs text-gray-500 mt-1 inline-block">
+                              난이도: {eq.difficulty}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                      {evaluationQueries.length > 50 && (
+                        <div className="px-3 py-2 text-xs text-gray-500 text-center">
+                          +{evaluationQueries.length - 50} more questions
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500 py-2">No questions available</div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Top K Results
@@ -148,18 +214,30 @@ function QueryTest() {
                   </div>
                 </div>
                 {result.comparison && (
-                  <div className="mt-4 space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Precision@K:</span>
-                      <span className="font-medium">{result.comparison.precision_at_k.toFixed(3)}</span>
+                  <div className="mt-4 p-3 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-2">📊 평가 메트릭</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-700">Precision@{topK}:</span>
+                        <span className="font-bold text-green-700">
+                          {(result.comparison.precision_at_k * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-700">Recall@{topK}:</span>
+                        <span className="font-bold text-blue-700">
+                          {(result.comparison.recall_at_k * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-700">Hit Rate:</span>
+                        <span className="font-bold text-purple-700">
+                          {(result.comparison.hit_rate * 100).toFixed(1)}%
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Recall@K:</span>
-                      <span className="font-medium">{result.comparison.recall_at_k.toFixed(3)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Hit Rate:</span>
-                      <span className="font-medium">{result.comparison.hit_rate.toFixed(3)}</span>
+                    <div className="mt-2 pt-2 border-t border-green-200 text-xs text-gray-600">
+                      정답 문서: {result.comparison.golden_doc_ids.length}개
                     </div>
                   </div>
                 )}
@@ -199,16 +277,34 @@ function QueryTest() {
                 <h2 className="text-xl font-semibold mb-4">Results ({result.total})</h2>
                 <div className="space-y-4">
                   {result.results.map((chunk, index) => (
-                    <div key={chunk.chunk_id} className="bg-white shadow rounded-lg p-6">
+                    <div 
+                      key={chunk.chunk_id} 
+                      className={`shadow rounded-lg p-6 ${
+                        chunk.is_golden 
+                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300' 
+                          : 'bg-white'
+                      }`}
+                    >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center space-x-3">
-                          <span className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full font-semibold">
+                          <span className={`flex items-center justify-center w-8 h-8 rounded-full font-semibold ${
+                            chunk.is_golden 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-blue-100 text-blue-600'
+                          }`}>
                             {index + 1}
                           </span>
                           <div>
-                            <p className="text-sm text-gray-500">
-                              Score: <span className="font-medium text-gray-900">{chunk.score.toFixed(4)}</span>
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm text-gray-500">
+                                Score: <span className="font-medium text-gray-900">{chunk.score.toFixed(4)}</span>
+                              </p>
+                              {chunk.is_golden && (
+                                <span className="px-2 py-0.5 bg-green-600 text-white text-xs font-bold rounded-full">
+                                  ✓ 정답
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-gray-400">
                               DataSource: {chunk.datasource_id}
                             </p>

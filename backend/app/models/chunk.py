@@ -28,14 +28,14 @@ class Chunk(Base):
         nullable=False,
         index=True
     )
-    document_id = Column(Integer, nullable=True, index=True)  # Document ID (from datasource or dataset)
+    document_id = Column(String, nullable=True, index=True)  # Document ID (from datasource or dataset)
     
     # 청크 정보
     chunk_index = Column(Integer, nullable=False)  # 문서 내 청크 순서
     content = Column(Text, nullable=False)  # 청크 내용
     
     # 메타데이터
-    metadata = Column(JSON, nullable=True)  # 파일명, 페이지 번호, 라인 번호 등
+    chunk_metadata = Column(JSON, nullable=True)  # 파일명, 페이지 번호, 라인 번호 등
     
     # 벡터 ID (Qdrant point ID와 매핑)
     vector_id = Column(BigInteger, nullable=True, index=True)

@@ -23,6 +23,15 @@ class EvaluationDataset(Base):
     num_queries = Column(Integer, default=0, nullable=False)
     num_documents = Column(Integer, default=0, nullable=False)
 
+    # Download status (using String instead of Enum for flexibility)
+    status = Column(
+        String(50),
+        nullable=False,
+        default="downloading",
+        index=True
+    )
+    download_error = Column(Text, nullable=True)
+
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

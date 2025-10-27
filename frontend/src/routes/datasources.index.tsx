@@ -113,12 +113,18 @@ function DataSourcesPage() {
           </Link>
         </div>
       ) : (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="bg-white shadow rounded-lg overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   File
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Processor
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Type
@@ -137,13 +143,35 @@ function DataSourcesPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {datasources.map((ds) => (
                 <tr key={ds.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center min-w-[200px]">
                       <span className="text-2xl mr-3">{getFileIcon(ds.source_type)}</span>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{ds.name}</p>
+                      <div className="max-w-[250px]">
+                        <p className="text-sm font-medium text-gray-900 truncate" title={ds.name}>
+                          {ds.name}
+                        </p>
                       </div>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                    <div className="max-w-[300px] truncate" title={ds.source_uri}>
+                      {ds.source_uri ? ds.source_uri.split('/').pop() : '-'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {ds.processor_type ? (
+                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        ds.processor_type === 'docling' ? 'bg-purple-100 text-purple-800' :
+                        ds.processor_type === 'pdfplumber' ? 'bg-green-100 text-green-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {ds.processor_type === 'pypdf2' && '⚡ PyPDF2'}
+                        {ds.processor_type === 'pdfplumber' && '✅ pdfplumber'}
+                        {ds.processor_type === 'docling' && '🚀 Docling'}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">-</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">

@@ -17,7 +17,7 @@ from app.schemas.query import (
 )
 
 logger = structlog.get_logger(__name__)
-router = APIRouter(prefix="/api/v1/query", tags=["query"])
+router = APIRouter(prefix="/api/query", tags=["query"])
 
 
 def get_query_service(

@@ -24,7 +24,7 @@ class EvaluationQuery(Base):
     
     # Query metadata
     difficulty = Column(String(50), nullable=True)  # easy, medium, hard
-    query_type = Column(String(100), nullable=True)  # single-hop, multi-hop, etc.
+    query_type = Column(String(255), nullable=True)  # single-hop, multi-hop, etc.
     extra_metadata = Column(JSON, nullable=True, default=dict)
     
     # Query index in original dataset

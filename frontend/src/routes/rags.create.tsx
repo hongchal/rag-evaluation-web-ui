@@ -23,14 +23,24 @@ const CHUNKING_MODULES = [
   {
     value: 'semantic',
     label: 'Semantic',
-    description: '의미 기반 분할',
-    defaultParams: { threshold: 0.7 },
+    description: '의미 기반 분할 (embedder 필요)',
+    defaultParams: { 
+      similarity_threshold: 0.75,
+      min_chunk_tokens: 100,
+      max_chunk_tokens: 800,
+      embedder_module: 'bge_m3',
+      embedder_params: {}
+    },
   },
   {
     value: 'late_chunking',
     label: 'Late Chunking (Jina v3)',
     description: 'Jina v3 모델을 사용한 Late Chunking',
-    defaultParams: { chunk_size: 512 },
+    defaultParams: { 
+      sentences_per_chunk: 3,
+      min_chunk_tokens: 50,
+      max_chunk_tokens: 512
+    },
   },
 ]
 
@@ -51,7 +61,11 @@ const EMBEDDING_MODULES = [
     value: 'vllm_http',
     label: 'vLLM HTTP',
     description: 'vLLM 서버를 통한 임베딩',
-    defaultParams: { base_url: 'http://localhost:8001', model_name: 'BAAI/bge-m3' },
+    defaultParams: { 
+      base_url: 'http://localhost:8001', 
+      model_name: 'BAAI/bge-m3',
+      embedding_dim: 1024 
+    },
   },
 ]
 
@@ -208,6 +222,39 @@ function CreateRAG() {
                 </select>
               </div>
 
+              {/* Semantic Chunking: Special UI for embedder selection */}
+              {config.chunking_module === 'semantic' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Embedder Module (for semantic chunking) *
+                  </label>
+                  <select
+                    value={config.chunking_params.embedder_module || 'bge_m3'}
+                    onChange={(e) => {
+                      const embedderModule = EMBEDDING_MODULES.find((m) => m.value === e.target.value)
+                      setConfig({
+                        ...config,
+                        chunking_params: {
+                          ...config.chunking_params,
+                          embedder_module: e.target.value,
+                          embedder_params: embedderModule?.defaultParams || {},
+                        },
+                      })
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {EMBEDDING_MODULES.map((module) => (
+                      <option key={module.value} value={module.value}>
+                        {module.label} - {module.description}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    💡 Chunking용 임베더를 선택하세요 (Retrieval과 다를 수 있음)
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Parameters (JSON)
@@ -223,8 +270,13 @@ function CreateRAG() {
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                  rows={4}
+                  rows={config.chunking_module === 'semantic' ? 6 : 4}
                 />
+                {config.chunking_module === 'semantic' && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    ℹ️ embedder_module과 embedder_params는 위 드롭다운으로 관리됩니다
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -251,6 +303,74 @@ function CreateRAG() {
                 </select>
               </div>
 
+              {/* vLLM HTTP: Special UI for common parameters */}
+              {config.embedding_module === 'vllm_http' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Model Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={config.embedding_params.model_name || ''}
+                      onChange={(e) => setConfig({
+                        ...config,
+                        embedding_params: {
+                          ...config.embedding_params,
+                          model_name: e.target.value
+                        }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="예: Qwen/Qwen3-Embedding-0.6B"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      💡 vLLM 서버에 로드된 모델 이름을 입력하세요
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Base URL *
+                    </label>
+                    <input
+                      type="text"
+                      value={config.embedding_params.base_url || ''}
+                      onChange={(e) => setConfig({
+                        ...config,
+                        embedding_params: {
+                          ...config.embedding_params,
+                          base_url: e.target.value
+                        }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="예: https://example.com:8000"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Embedding Dimension *
+                    </label>
+                    <input
+                      type="number"
+                      value={config.embedding_params.embedding_dim || ''}
+                      onChange={(e) => setConfig({
+                        ...config,
+                        embedding_params: {
+                          ...config.embedding_params,
+                          embedding_dim: parseInt(e.target.value, 10) || 1024
+                        }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="예: 512, 768, 1024, 4096"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      💡 일반적인 값: 512, 768, 1024, 1536, 4096
+                    </p>
+                  </div>
+                </>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Parameters (JSON)
@@ -268,6 +388,11 @@ function CreateRAG() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                   rows={4}
                 />
+                {config.embedding_module === 'vllm_http' && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    ℹ️ model_name, base_url, embedding_dim은 위 필드로 관리됩니다
+                  </p>
+                )}
               </div>
             </div>
           </div>

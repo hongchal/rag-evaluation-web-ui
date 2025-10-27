@@ -103,11 +103,20 @@ run = "docker compose logs -f"
 description = "Stop all services (backend, frontend, docker)"
 run = [
   "echo '🛑 Stopping all services...'",
-  "pkill -9 -f 'uvicorn' || true",
-  "pkill -9 -f 'vite' || true",
-  "pkill -9 -f 'multiprocessing' || true",
-  "lsof -ti:8000 | xargs kill -9 2>/dev/null || true",
-  "lsof -ti:5174 | xargs kill -9 2>/dev/null || true",
+  # Try graceful shutdown first (SIGTERM), then force if needed
+  "pkill -f 'uvicorn app.main:app' || true",
+  "sleep 1",
+  "pkill -9 -f 'uvicorn app.main:app' 2>/dev/null || true",
+  "pkill -f 'vite.*5174' || true",
+  "sleep 1",
+  "pkill -9 -f 'vite.*5174' 2>/dev/null || true",
+  # Kill by port as fallback
+  "lsof -ti:8000 2>/dev/null | xargs -r kill -15 || true",
+  "sleep 1",
+  "lsof -ti:8000 2>/dev/null | xargs -r kill -9 || true",
+  "lsof -ti:5174 2>/dev/null | xargs -r kill -15 || true",
+  "sleep 1",
+  "lsof -ti:5174 2>/dev/null | xargs -r kill -9 || true",
   "docker compose down",
   "echo '✅ All services stopped'"
 ]
@@ -116,11 +125,20 @@ run = [
 description = "Stop backend and frontend servers only"
 run = [
   "echo '🛑 Stopping servers...'",
-  "pkill -9 -f 'uvicorn' || true",
-  "pkill -9 -f 'vite' || true",
-  "pkill -9 -f 'multiprocessing' || true",
-  "lsof -ti:8000 | xargs kill -9 2>/dev/null || true",
-  "lsof -ti:5174 | xargs kill -9 2>/dev/null || true",
+  # Try graceful shutdown first (SIGTERM), then force if needed
+  "pkill -f 'uvicorn app.main:app' || true",
+  "sleep 1",
+  "pkill -9 -f 'uvicorn app.main:app' 2>/dev/null || true",
+  "pkill -f 'vite.*5174' || true",
+  "sleep 1",
+  "pkill -9 -f 'vite.*5174' 2>/dev/null || true",
+  # Kill by port as fallback
+  "lsof -ti:8000 2>/dev/null | xargs -r kill -15 || true",
+  "sleep 1",
+  "lsof -ti:8000 2>/dev/null | xargs -r kill -9 || true",
+  "lsof -ti:5174 2>/dev/null | xargs -r kill -15 || true",
+  "sleep 1",
+  "lsof -ti:5174 2>/dev/null | xargs -r kill -9 || true",
   "echo '✅ Servers stopped'"
 ]
 

@@ -12,12 +12,12 @@ from app.schemas.evaluation import (
     EvaluationCreate,
     CompareRequest,
     EvaluationResponse,
-    EvaluationResponse,
     ComparisonResponse,
+    EvaluationListResponse,
 )
 
 logger = structlog.get_logger(__name__)
-router = APIRouter(prefix="/api/v1/evaluations", tags=["evaluations"])
+router = APIRouter(prefix="/api/evaluate", tags=["evaluate"])
 
 
 def get_evaluation_service(
@@ -216,7 +216,7 @@ def cancel_evaluation(
     return EvaluationResponse.model_validate(evaluation)
 
 
-@router.get("", response_model=List[EvaluationResponse])
+@router.get("", response_model=EvaluationListResponse)
 def list_evaluations(
     pipeline_id: Optional[int] = None,
     skip: int = 0,
@@ -266,7 +266,7 @@ def list_evaluations(
         
         responses.append(response)
     
-    return responses
+    return EvaluationListResponse(total=len(responses), items=responses)
 
 
 @router.delete("/{evaluation_id}", status_code=status.HTTP_204_NO_CONTENT)

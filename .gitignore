@@ -67,6 +67,10 @@ coverage/
 uploads/
 temp/
 
+# Datasets
+backend/datasets/
+*.pdf
+
 # mise
 .mise.local.toml
 

@@ -24,6 +24,8 @@ sentence-transformers==3.3.1
 PyPDF2==3.0.1
 pdfplumber==0.11.4
 python-docx==1.1.2
+docling==2.58.0  # Advanced PDF processing with layout understanding
+easyocr==1.7.2  # OCR with multilingual support (Korean, English, etc.)
 
 # Text Processing
 langchain-text-splitters==0.3.8
@@ -57,4 +59,8 @@ langchain-core==0.3.76
 rank-bm25==0.2.2
 pandas==2.2.3
 numpy==1.26.4
+
+# Dataset Management
+beir==2.0.0  # BEIR benchmark datasets
+datasets==3.2.0  # HuggingFace datasets library
 

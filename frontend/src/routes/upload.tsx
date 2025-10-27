@@ -7,6 +7,7 @@ export const Route = createFileRoute('/upload')({
 })
 
 type UploadType = 'datasource' | 'dataset'
+type ProcessorType = 'pypdf2' | 'pdfplumber' | 'docling'
 
 function UploadPage() {
   const navigate = useNavigate()
@@ -14,6 +15,7 @@ function UploadPage() {
   const [file, setFile] = useState<File | null>(null)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [processorType, setProcessorType] = useState<ProcessorType>('pdfplumber')
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -40,14 +42,23 @@ function UploadPage() {
 
     try {
       if (uploadType === 'datasource') {
-        await api.uploadDataSource(file, name, description || undefined)
+        await api.uploadDataSource(file, name, description || undefined, processorType)
         navigate({ to: '/datasources' } as any)
       } else {
         await api.uploadDataset(file, name, description || undefined)
         navigate({ to: '/datasets' } as any)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed')
+      if (err instanceof Error) {
+        // Handle 409 Conflict specifically
+        if (err.message.includes('409') || err.message.includes('already exists')) {
+          setError(err.message + ' You can upload the same file with a different processor to compare results.')
+        } else {
+          setError(err.message)
+        }
+      } else {
+        setError('Upload failed')
+      }
     } finally {
       setUploading(false)
     }
@@ -223,6 +234,76 @@ function UploadPage() {
                 placeholder="Add a description..."
               />
             </div>
+
+            {/* PDF Processor Selection (only for datasources with PDF files) */}
+            {uploadType === 'datasource' && file?.type === 'application/pdf' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  PDF Processing Method
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setProcessorType('pypdf2')}
+                    className={`p-4 border-2 rounded-lg text-left transition-all ${
+                      processorType === 'pypdf2'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="text-2xl mb-2">⚡</div>
+                    <h4 className="font-semibold text-sm mb-1">PyPDF2</h4>
+                    <p className="text-xs text-gray-600">Fast & Simple</p>
+                    <p className="text-xs text-gray-500 mt-1">Basic text extraction</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setProcessorType('pdfplumber')}
+                    className={`p-4 border-2 rounded-lg text-left transition-all ${
+                      processorType === 'pdfplumber'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="text-2xl mb-2">✅</div>
+                    <h4 className="font-semibold text-sm mb-1">pdfplumber</h4>
+                    <p className="text-xs text-gray-600">Balanced</p>
+                    <p className="text-xs text-gray-500 mt-1">Good quality + tables</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setProcessorType('docling')}
+                    className={`p-4 border-2 rounded-lg text-left transition-all ${
+                      processorType === 'docling'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="text-2xl mb-2">🚀</div>
+                    <h4 className="font-semibold text-sm mb-1">Docling</h4>
+                    <p className="text-xs text-gray-600">Best Quality</p>
+                    <p className="text-xs text-gray-500 mt-1">Layout + structure</p>
+                  </button>
+                </div>
+                
+                {/* Processor Description */}
+                <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                  <p className="text-xs text-gray-700">
+                    {processorType === 'pypdf2' && (
+                      <>⚡ <strong>PyPDF2</strong>: Fastest option for basic text extraction. Best for simple documents.</>
+                    )}
+                    {processorType === 'pdfplumber' && (
+                      <>✅ <strong>pdfplumber</strong>: Recommended for most cases. Preserves tables and has good quality.</>
+                    )}
+                    {processorType === 'docling' && (
+                      <>🚀 <strong>Docling</strong>: Advanced layout understanding with structure preservation. Perfect for complex documents, papers, and technical docs.</>
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Submit Button */}
             <div className="flex space-x-3">

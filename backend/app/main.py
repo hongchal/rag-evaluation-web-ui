@@ -47,11 +47,29 @@ async def lifespan(app: FastAPI):
     # Seed default RAG configurations
     from app.core.database import SessionLocal
     from app.services.rag_service import RAGService
+    from app.models.evaluation_dataset import EvaluationDataset
     
     db = SessionLocal()
     try:
         default_rags = RAGService.seed_default_rags(db)
         logger.info("Default RAGs seeded", count=len(default_rags))
+        
+        # Clean up orphaned downloading datasets (from server crashes/restarts)
+        orphaned = db.query(EvaluationDataset).filter(
+            EvaluationDataset.status == "downloading"
+        ).all()
+        
+        if orphaned:
+            for dataset in orphaned:
+                dataset.status = "failed"
+                dataset.download_error = "Download interrupted by server restart"
+                logger.warning(
+                    "cleaned_orphaned_download", 
+                    dataset_id=dataset.id, 
+                    name=dataset.name
+                )
+            db.commit()
+            logger.info("Cleaned up orphaned downloads", count=len(orphaned))
     except Exception as e:
         logger.error("Failed to seed default RAGs", error=str(e))
     finally:

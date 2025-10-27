@@ -1,5 +1,5 @@
 """Pipeline Schemas"""
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
@@ -90,6 +90,13 @@ class PipelineResponse(PipelineBase):
     pipeline_type: str
     rag_id: int
     dataset_id: Optional[int] = None
+    
+    # Indexing status
+    status: str = Field(..., description="Pipeline status: pending, indexing, ready, failed")
+    indexing_progress: Optional[float] = Field(None, description="Indexing progress (0-100)")
+    indexing_stats: Optional[Dict[str, Any]] = Field(None, description="Indexing statistics")
+    indexing_error: Optional[str] = Field(None, description="Error message if indexing failed")
+    
     created_at: datetime
     updated_at: datetime
     
