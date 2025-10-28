@@ -35,6 +35,40 @@ A comprehensive web application for evaluating and comparing different RAG (Retr
   - Python 3.11+
 - Docker & Docker Compose
 
+## Environment Setup
+
+### 환경변수 설정
+
+모든 환경변수는 **프로젝트 루트의 `.env` 파일 하나에서 관리**합니다.
+
+```bash
+# 1. 템플릿 복사
+cp .env.example .env
+
+# 2. 필요한 값 수정 (API 키, 포트 등)
+vim .env
+```
+
+#### 주요 설정 항목
+
+```bash
+# Database
+DATABASE_URL=postgresql://postgres:postgres@localhost:5433/rag_evaluation
+
+# Qdrant
+QDRANT_URL=http://localhost:6335
+
+# AI Services
+ANTHROPIC_API_KEY=your-api-key-here
+
+# 기타 설정들...
+```
+
+**장점**:
+- ✅ 한 곳에서만 관리 (`.env` 파일 하나)
+- ✅ `docker-compose`와 로컬 실행 모두 같은 설정 사용
+- ✅ 포트 변경 시 한 번만 수정하면 됨
+
 ## Quick Start
 
 ### Using mise (권장) 또는 Make

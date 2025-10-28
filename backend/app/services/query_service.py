@@ -236,7 +236,8 @@ class QueryService:
         pipeline_id: int,
         query: str,
         top_k: int = 5,
-        llm_endpoint: Optional[str] = None,
+        system_prompt: Optional[str] = None,
+        llm_config: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Generate an answer using retrieved chunks and LLM.
@@ -244,50 +245,87 @@ class QueryService:
         Steps:
         1. Search for relevant chunks using pipeline
         2. Format context from chunks
-        3. Call LLM with context and query
-        4. Return answer with sources
+        3. Create generator from llm_config
+        4. Call LLM with context and query
+        5. Return answer with sources
         
         Args:
             pipeline_id: Pipeline ID (includes RAG + DataSources)
             query: Query text
             top_k: Number of chunks to retrieve
-            llm_endpoint: Optional LLM endpoint URL
+            system_prompt: Custom system prompt (overrides default)
+            llm_config: LLM configuration dict with keys:
+                - type: 'claude' or 'vllm'
+                - model_name: str
+                - api_key: Optional[str] (for Claude)
+                - endpoint: Optional[str] (for vLLM)
+                - parameters: Optional[dict] (temperature, max_tokens, top_p)
             
         Returns:
-            Dict with answer, sources, and timing info
+            Dict with keys:
+                - query: str
+                - answer: str
+                - sources: List[Dict]
+                - tokens_used: int
+                - total_time: float
+                - search_time: float
+                - llm_time: float
             
         Raises:
-            ValueError: If Pipeline not found
-            NotImplementedError: If LLM integration not available
+            ValueError: If Pipeline not found or llm_config invalid
         """
-        # First, search for relevant chunks
+        import time
+        from app.services.generation.base import GenerationConfig, format_context
+        from app.services.generation.factory import GeneratorFactory
+        
+        if not llm_config:
+            raise ValueError("llm_config is required for answer generation")
+        
+        # Step 1: Search for relevant chunks
+        search_start = time.time()
         search_result = self.search(
             pipeline_id=pipeline_id,
             query=query,
             top_k=top_k,
         )
+        search_time = time.time() - search_start
         
-        # Format context
-        context_parts = []
-        for i, chunk in enumerate(search_result.chunks, 1):
-            context_parts.append(f"[{i}] {chunk['content']}")
+        # Step 2: Format context from chunks
+        context = format_context(search_result.chunks)
         
-        context = "\n\n".join(context_parts)
+        # Step 3: Create generator from config
+        generator = GeneratorFactory.create(
+            model_type=llm_config.get("type"),
+            model_name=llm_config.get("model_name"),
+            api_key=llm_config.get("api_key"),
+            endpoint=llm_config.get("endpoint"),
+        )
         
-        # TODO: Integrate with LLM
-        # For now, return a placeholder
-        if llm_endpoint:
-            # Future: Call LLM endpoint with context and query
-            raise NotImplementedError("LLM integration not yet implemented")
+        # Step 4: Prepare generation config
+        params = llm_config.get("parameters", {})
+        gen_config = GenerationConfig(
+            temperature=params.get("temperature", 0.7),
+            max_tokens=params.get("max_tokens", 1000),
+            top_p=params.get("top_p", 0.9),
+        )
         
+        # Step 5: Generate answer
+        gen_result = generator.generate(
+            query=query,
+            context=context,
+            config=gen_config,
+            system_prompt=system_prompt,
+        )
+        
+        # Step 6: Return complete result
         return {
             "query": query,
-            "answer": "LLM integration not yet implemented. Please use search() for now.",
+            "answer": gen_result.answer,
             "sources": search_result.chunks,
-            "context": context,
-            "search_time": search_result.search_time,
-            "rerank_time": search_result.rerank_time,
-            "total_time": search_result.total_time,
+            "tokens_used": gen_result.tokens_used,
+            "total_time": search_time + gen_result.generation_time,
+            "search_time": search_time,
+            "llm_time": gen_result.generation_time,
         }
 
     def batch_search(

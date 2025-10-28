@@ -27,6 +27,10 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    watch: {
+      // Exclude routeTree.gen.ts from triggering HMR
+      ignored: ["**/routeTree.gen.ts"],
+    },
   },
   resolve: {
     alias: {

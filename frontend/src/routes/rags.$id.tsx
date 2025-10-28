@@ -76,7 +76,7 @@ function RAGDetail() {
         </div>
         <div className="flex space-x-2">
           <Link
-            to="/query"
+            to="/retrieve"
             search={{ ragId: rag.id } as any}
             className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
           >

@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from "./routes/__root"
 import { Route as UploadRouteImport } from "./routes/upload"
-import { Route as QueryRouteImport } from "./routes/query"
+import { Route as RetrieveRouteImport } from "./routes/retrieve"
+import { Route as PromptsRouteImport } from "./routes/prompts"
+import { Route as GenerationRouteImport } from "./routes/generation"
 import { Route as EvaluateRouteImport } from "./routes/evaluate"
 import { Route as IndexRouteImport } from "./routes/index"
 import { Route as RagsIndexRouteImport } from "./routes/rags.index"
@@ -29,9 +31,19 @@ const UploadRoute = UploadRouteImport.update({
   path: "/upload",
   getParentRoute: () => rootRouteImport,
 } as any)
-const QueryRoute = QueryRouteImport.update({
-  id: "/query",
-  path: "/query",
+const RetrieveRoute = RetrieveRouteImport.update({
+  id: "/retrieve",
+  path: "/retrieve",
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PromptsRoute = PromptsRouteImport.update({
+  id: "/prompts",
+  path: "/prompts",
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GenerationRoute = GenerationRouteImport.update({
+  id: "/generation",
+  path: "/generation",
   getParentRoute: () => rootRouteImport,
 } as any)
 const EvaluateRoute = EvaluateRouteImport.update({
@@ -98,7 +110,9 @@ const EvaluationsIdRoute = EvaluationsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute
   "/evaluate": typeof EvaluateRoute
-  "/query": typeof QueryRoute
+  "/generation": typeof GenerationRoute
+  "/prompts": typeof PromptsRoute
+  "/retrieve": typeof RetrieveRoute
   "/upload": typeof UploadRoute
   "/evaluations/$id": typeof EvaluationsIdRoute
   "/evaluations/compare": typeof EvaluationsCompareRoute
@@ -114,7 +128,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   "/": typeof IndexRoute
   "/evaluate": typeof EvaluateRoute
-  "/query": typeof QueryRoute
+  "/generation": typeof GenerationRoute
+  "/prompts": typeof PromptsRoute
+  "/retrieve": typeof RetrieveRoute
   "/upload": typeof UploadRoute
   "/evaluations/$id": typeof EvaluationsIdRoute
   "/evaluations/compare": typeof EvaluationsCompareRoute
@@ -131,7 +147,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   "/": typeof IndexRoute
   "/evaluate": typeof EvaluateRoute
-  "/query": typeof QueryRoute
+  "/generation": typeof GenerationRoute
+  "/prompts": typeof PromptsRoute
+  "/retrieve": typeof RetrieveRoute
   "/upload": typeof UploadRoute
   "/evaluations/$id": typeof EvaluationsIdRoute
   "/evaluations/compare": typeof EvaluationsCompareRoute
@@ -149,7 +167,9 @@ export interface FileRouteTypes {
   fullPaths:
     | "/"
     | "/evaluate"
-    | "/query"
+    | "/generation"
+    | "/prompts"
+    | "/retrieve"
     | "/upload"
     | "/evaluations/$id"
     | "/evaluations/compare"
@@ -165,7 +185,9 @@ export interface FileRouteTypes {
   to:
     | "/"
     | "/evaluate"
-    | "/query"
+    | "/generation"
+    | "/prompts"
+    | "/retrieve"
     | "/upload"
     | "/evaluations/$id"
     | "/evaluations/compare"
@@ -181,7 +203,9 @@ export interface FileRouteTypes {
     | "__root__"
     | "/"
     | "/evaluate"
-    | "/query"
+    | "/generation"
+    | "/prompts"
+    | "/retrieve"
     | "/upload"
     | "/evaluations/$id"
     | "/evaluations/compare"
@@ -198,7 +222,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   EvaluateRoute: typeof EvaluateRoute
-  QueryRoute: typeof QueryRoute
+  GenerationRoute: typeof GenerationRoute
+  PromptsRoute: typeof PromptsRoute
+  RetrieveRoute: typeof RetrieveRoute
   UploadRoute: typeof UploadRoute
   EvaluationsIdRoute: typeof EvaluationsIdRoute
   EvaluationsCompareRoute: typeof EvaluationsCompareRoute
@@ -221,11 +247,25 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof UploadRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/query": {
-      id: "/query"
-      path: "/query"
-      fullPath: "/query"
-      preLoaderRoute: typeof QueryRouteImport
+    "/retrieve": {
+      id: "/retrieve"
+      path: "/retrieve"
+      fullPath: "/retrieve"
+      preLoaderRoute: typeof RetrieveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    "/prompts": {
+      id: "/prompts"
+      path: "/prompts"
+      fullPath: "/prompts"
+      preLoaderRoute: typeof PromptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    "/generation": {
+      id: "/generation"
+      path: "/generation"
+      fullPath: "/generation"
+      preLoaderRoute: typeof GenerationRouteImport
       parentRoute: typeof rootRouteImport
     }
     "/evaluate": {
@@ -318,7 +358,9 @@ declare module "@tanstack/react-router" {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EvaluateRoute: EvaluateRoute,
-  QueryRoute: QueryRoute,
+  GenerationRoute: GenerationRoute,
+  PromptsRoute: PromptsRoute,
+  RetrieveRoute: RetrieveRoute,
   UploadRoute: UploadRoute,
   EvaluationsIdRoute: EvaluationsIdRoute,
   EvaluationsCompareRoute: EvaluationsCompareRoute,

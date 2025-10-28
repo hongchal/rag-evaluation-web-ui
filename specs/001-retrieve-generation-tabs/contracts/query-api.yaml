@@ -1,0 +1,330 @@
+openapi: 3.0.3
+info:
+  title: Query API - Answer Generation
+  description: |
+    API for answer generation with RAG (Retrieval-Augmented Generation).
+    This extends the existing `/api/query/search` endpoint with generation capabilities.
+  version: 1.0.0
+  contact:
+    name: RAG Evaluation Team
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+tags:
+  - name: query
+    description: Search and answer generation endpoints
+
+paths:
+  /api/query/answer:
+    post:
+      tags:
+        - query
+      summary: Generate answer with RAG
+      description: |
+        Perform retrieval and generate an answer using a language model.
+        
+        **Process**:
+        1. Use pipeline to retrieve relevant document chunks
+        2. Format chunks as context
+        3. Generate answer using specified model (Claude or vLLM)
+        4. Return answer with source citations
+        
+        **Performance**:
+        - Target response time: < 30 seconds
+        - Retrieval: < 3 seconds
+        - Generation: < 27 seconds
+        
+      operationId: generateAnswer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnswerRequest'
+            examples:
+              claude_example:
+                summary: Claude model request
+                value:
+                  pipeline_id: 1
+                  query: "RAG 시스템이란 무엇인가요?"
+                  top_k: 5
+                  model_config:
+                    type: "claude"
+                    model_name: "claude-3-sonnet-20240229"
+                    api_key: "sk-ant-xxxxxxxxxxxxx"
+                    parameters:
+                      temperature: 0.7
+                      max_tokens: 1000
+                      top_p: 0.9
+              vllm_example:
+                summary: vLLM model request
+                value:
+                  pipeline_id: 2
+                  query: "What is a transformer model?"
+                  top_k: 3
+                  model_config:
+                    type: "vllm"
+                    model_name: "llama-2-70b"
+                    endpoint: "http://localhost:8001/v1/completions"
+                    parameters:
+                      temperature: 0.5
+                      max_tokens: 800
+                      top_p: 0.95
+      responses:
+        '200':
+          description: Answer generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnswerResponse'
+              examples:
+                success:
+                  summary: Successful answer generation
+                  value:
+                    query: "RAG 시스템이란 무엇인가요?"
+                    answer: "RAG(Retrieval-Augmented Generation)는 검색 기반 생성 모델로, 외부 지식 베이스에서 관련 정보를 검색한 후 이를 기반으로 답변을 생성하는 시스템입니다..."
+                    sources:
+                      - chunk_id: "doc1_chunk5"
+                        datasource_id: 1
+                        content: "RAG는 검색과 생성을 결합한 방식으로..."
+                        score: 0.92
+                        metadata:
+                          page: 3
+                      - chunk_id: "doc2_chunk2"
+                        datasource_id: 1
+                        content: "Retrieval-Augmented Generation의 장점은..."
+                        score: 0.87
+                        metadata:
+                          page: 1
+                    tokens_used: 1523
+                    generation_time: 18.5
+                    retrieval_time: 2.3
+                    llm_time: 16.2
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_pipeline:
+                  summary: Invalid pipeline ID
+                  value:
+                    detail: "Pipeline 999 not found"
+                invalid_api_key:
+                  summary: Invalid Claude API key
+                  value:
+                    detail: "Invalid Claude API key format"
+                invalid_endpoint:
+                  summary: Invalid vLLM endpoint
+                  value:
+                    detail: "endpoint must be a valid HTTP(S) URL"
+        '429':
+          description: Rate limit exceeded (Claude API)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "API rate limit reached. Please wait a moment."
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                generation_failed:
+                  summary: Answer generation failed
+                  value:
+                    detail: "Answer generation failed: Connection to model server failed"
+                vllm_timeout:
+                  summary: vLLM server timeout
+                  value:
+                    detail: "Model server is taking too long. Please try again."
+
+components:
+  schemas:
+    AnswerRequest:
+      type: object
+      required:
+        - pipeline_id
+        - query
+        - model_config
+      properties:
+        pipeline_id:
+          type: integer
+          format: int32
+          minimum: 1
+          description: Pipeline ID for document retrieval
+          example: 1
+        query:
+          type: string
+          minLength: 1
+          maxLength: 10000
+          description: User question
+          example: "RAG 시스템이란 무엇인가요?"
+        top_k:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 20
+          default: 5
+          description: Number of document chunks to retrieve
+          example: 5
+        model_config:
+          $ref: '#/components/schemas/ModelConfigRequest'
+
+    ModelConfigRequest:
+      type: object
+      required:
+        - type
+        - model_name
+      properties:
+        type:
+          type: string
+          enum: [claude, vllm]
+          description: Model type
+          example: claude
+        model_name:
+          type: string
+          description: Model name (e.g., "claude-3-sonnet-20240229", "llama-2-70b")
+          example: "claude-3-sonnet-20240229"
+        api_key:
+          type: string
+          description: API key for Claude (required if type is "claude")
+          example: "sk-ant-xxxxxxxxxxxxx"
+          writeOnly: true
+        endpoint:
+          type: string
+          format: uri
+          description: Endpoint URL for vLLM (required if type is "vllm")
+          example: "http://localhost:8001/v1/completions"
+        parameters:
+          $ref: '#/components/schemas/GenerationParamsRequest'
+
+    GenerationParamsRequest:
+      type: object
+      properties:
+        temperature:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.7
+          description: Generation temperature (0 = deterministic, 1 = creative)
+          example: 0.7
+        max_tokens:
+          type: integer
+          format: int32
+          minimum: 100
+          maximum: 4000
+          default: 1000
+          description: Maximum tokens to generate
+          example: 1000
+        top_p:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.9
+          description: Nucleus sampling parameter
+          example: 0.9
+
+    AnswerResponse:
+      type: object
+      required:
+        - query
+        - answer
+        - sources
+        - tokens_used
+        - generation_time
+        - retrieval_time
+        - llm_time
+      properties:
+        query:
+          type: string
+          description: Original query
+          example: "RAG 시스템이란 무엇인가요?"
+        answer:
+          type: string
+          description: Generated answer
+          example: "RAG(Retrieval-Augmented Generation)는..."
+        sources:
+          type: array
+          description: Retrieved document chunks used as context
+          items:
+            $ref: '#/components/schemas/RetrievedChunk'
+        tokens_used:
+          type: integer
+          format: int32
+          description: Total tokens used (input + output)
+          example: 1523
+        generation_time:
+          type: number
+          format: float
+          description: Total generation time in seconds (retrieval + LLM)
+          example: 18.5
+        retrieval_time:
+          type: number
+          format: float
+          description: Retrieval time in seconds
+          example: 2.3
+        llm_time:
+          type: number
+          format: float
+          description: LLM generation time in seconds
+          example: 16.2
+
+    RetrievedChunk:
+      type: object
+      required:
+        - chunk_id
+        - datasource_id
+        - content
+        - score
+      properties:
+        chunk_id:
+          type: string
+          description: Unique chunk identifier from Qdrant
+          example: "doc1_chunk5"
+        datasource_id:
+          type: integer
+          format: int32
+          description: Source data source ID
+          example: 1
+        content:
+          type: string
+          description: Chunk text content
+          example: "RAG는 검색과 생성을 결합한 방식으로..."
+        score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: Relevance score
+          example: 0.92
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional metadata (page number, title, etc.)
+          example:
+            page: 3
+            section: "Introduction"
+        is_golden:
+          type: boolean
+          description: Whether this is a golden (ground truth) chunk (test pipelines only)
+          example: false
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Error message
+          example: "Pipeline 999 not found"
+

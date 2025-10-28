@@ -2,8 +2,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { api, type Pipeline, type SearchResponse, type EvaluationQuery } from '../lib/api'
 
-export const Route = createFileRoute('/query')({
-  component: QueryTest,
+export const Route = createFileRoute('/retrieve')({
+  component: RetrieveTab,
   validateSearch: (search: Record<string, unknown>) => {
     return {
       pipelineId: search.pipelineId as number | undefined,
@@ -11,7 +11,7 @@ export const Route = createFileRoute('/query')({
   },
 })
 
-function QueryTest() {
+function RetrieveTab() {
   const { pipelineId: initialPipelineId } = Route.useSearch()
   
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
@@ -92,7 +92,7 @@ function QueryTest() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Query Test</h1>
+      <h1 className="text-3xl font-bold mb-8">Retrieve</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Search Form */}

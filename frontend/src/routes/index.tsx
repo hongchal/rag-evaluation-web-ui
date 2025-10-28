@@ -25,7 +25,7 @@ function Index() {
           </Link>
 
           <Link
-            to="/query"
+            to="/retrieve"
             className="block bg-white shadow-lg rounded-lg p-8 hover:shadow-xl transition-shadow"
           >
             <h2 className="text-2xl font-semibold mb-3">🔍 Test Query</h2>

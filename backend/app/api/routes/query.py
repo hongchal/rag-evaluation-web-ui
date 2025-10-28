@@ -105,14 +105,26 @@ def answer(
     1. Load pipeline (RAG + DataSources)
     2. Search for relevant chunks
     3. Format context
-    4. Generate answer with LLM
+    4. Generate answer with LLM (Claude or vLLM)
     5. Return answer with sources
+    
+    The llm_config specifies which model to use and its parameters:
+    - type: 'claude' or 'vllm'
+    - model_name: Model identifier
+    - api_key: For Claude authentication
+    - endpoint: For vLLM HTTP server
+    - parameters: temperature, max_tokens, top_p
     """
     try:
+        # Convert Pydantic model to dict for query_service
+        llm_config_dict = answer_request.llm_config.dict()
+        
         result = query_service.answer(
             pipeline_id=answer_request.pipeline_id,
             query=answer_request.query,
             top_k=answer_request.top_k,
+            system_prompt=answer_request.system_prompt,
+            llm_config=llm_config_dict,
         )
         
         return AnswerResponse(
@@ -121,7 +133,7 @@ def answer(
             sources=[
                 RetrievedChunk(
                     chunk_id=str(chunk["id"]),
-                    datasource_id=chunk["datasource_id"],
+                    datasource_id=chunk.get("datasource_id", 0),
                     content=chunk["content"],
                     score=chunk["score"],
                     metadata=chunk.get("metadata"),
@@ -134,13 +146,15 @@ def answer(
             llm_time=result.get("llm_time", 0.0),
         )
         
+    except ValueError as e:
+        logger.warning("answer_validation_error", error=str(e), query=answer_request.query[:100])
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except NotImplementedError as e:
+        logger.warning("answer_not_implemented", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
             detail=str(e)
         )
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error("answer_failed", error=str(e), query=answer_request.query[:100])
         raise HTTPException(

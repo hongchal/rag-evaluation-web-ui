@@ -108,6 +108,7 @@ def list_pipelines(
     pipeline_type: Optional[str] = None,
     rag_id: Optional[int] = None,
     datasource_id: Optional[int] = None,
+    dataset_id: Optional[int] = None,
     skip: int = 0,
     limit: int = 100,
     pipeline_service: PipelineService = Depends(get_pipeline_service),
@@ -119,6 +120,7 @@ def list_pipelines(
     - pipeline_type: Filter by pipeline type ('normal' or 'test')
     - rag_id: Filter by RAG configuration ID
     - datasource_id: Filter by datasource ID (pipelines containing this datasource)
+    - dataset_id: Filter by evaluation dataset ID (test pipelines only)
     - skip: Number of items to skip (pagination)
     - limit: Maximum number of items to return
     """
@@ -126,6 +128,7 @@ def list_pipelines(
         pipeline_type=pipeline_type,
         rag_id=rag_id,
         datasource_id=datasource_id,
+        dataset_id=dataset_id,
         skip=skip,
         limit=limit
     )

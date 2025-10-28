@@ -283,3 +283,89 @@ def delete_evaluation(
         )
     logger.info("evaluation_deleted", evaluation_id=evaluation_id)
 
+
+@router.post("/{evaluation_id}/analyze")
+def analyze_evaluation(
+    evaluation_id: int,
+    eval_service: EvaluationService = Depends(get_evaluation_service),
+):
+    """Generate AI-powered analysis of evaluation results using Claude."""
+    from app.services.claude_analysis_service import ClaudeAnalysisService
+    from app.models.pipeline import Pipeline
+    from app.schemas.evaluation import MetricsResponse
+    
+    try:
+        # Get evaluation
+        evaluation = eval_service.get_evaluation(evaluation_id)
+        if not evaluation:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Evaluation {evaluation_id} not found"
+            )
+        
+        # Check if completed
+        if evaluation.status != "completed":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Evaluation must be completed before analysis"
+            )
+        
+        # Build metrics list
+        if not evaluation.results:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No evaluation results available"
+            )
+        
+        metrics_list = []
+        for result in evaluation.results:
+            pipeline = None
+            if result.pipeline_id:
+                pipeline = eval_service.db.query(Pipeline).filter(Pipeline.id == result.pipeline_id).first()
+            
+            metrics_list.append({
+                "pipeline_id": result.pipeline_id,
+                "pipeline_name": pipeline.name if pipeline else None,
+                "ndcg_at_k": result.ndcg_at_k,
+                "mrr": result.mrr,
+                "precision_at_k": result.precision_at_k,
+                "recall_at_k": result.recall_at_k,
+                "hit_rate": result.hit_rate,
+                "map_score": result.map_score,
+                "chunking_time": result.chunking_time,
+                "embedding_time": result.embedding_time,
+                "retrieval_time": result.retrieval_time,
+                "total_time": result.total_time,
+                "num_chunks": result.num_chunks,
+                "avg_chunk_size": result.avg_chunk_size,
+            })
+        
+        # Get dataset name if available
+        dataset_name = None
+        if evaluation.results and evaluation.results[0].result_metadata:
+            dataset_name = evaluation.results[0].result_metadata.get("dataset_name")
+        
+        # Generate analysis
+        analysis_service = ClaudeAnalysisService()
+        analysis = analysis_service.analyze_evaluation_results(
+            evaluation_name=evaluation.name,
+            metrics=metrics_list,
+            dataset_name=dataset_name
+        )
+        
+        logger.info("evaluation_analysis_generated", evaluation_id=evaluation_id)
+        
+        return {
+            "evaluation_id": evaluation_id,
+            "analysis": analysis
+        }
+        
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error("evaluation_analysis_failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate analysis: {str(e)}"
+        )
+
