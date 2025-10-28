@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, ConfigDict
 class RetrievedChunk(BaseModel):
     """검색된 청크"""
     chunk_id: str = Field(..., description="Chunk ID in vector store")
-    datasource_id: int = Field(..., description="Data source ID")
+    datasource_id: Optional[int] = Field(None, description="Data source ID (None for test pipelines)")
     content: str = Field(..., description="Chunk content")
     score: float = Field(..., description="Relevance score")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
