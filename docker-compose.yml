@@ -5,11 +5,11 @@ services:
     image: postgres:15
     container_name: rag-eval-postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: rag_evaluation
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +22,7 @@ services:
     image: qdrant/qdrant:v1.12.1
     container_name: rag-eval-qdrant
     ports:
-      - "6335:6333"
+      - "${QDRANT_PORT}:6333"
       - "6336:6334"
     volumes:
       - qdrant_data:/qdrant/storage
@@ -38,13 +38,18 @@ services:
       dockerfile: Dockerfile
     container_name: rag-eval-backend
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/rag_evaluation
+      # Docker 내부에서는 서비스 이름으로 접근
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_URL: http://qdrant:6333
-      # Note: 호스트에서 접근 시 localhost:5433, localhost:6335 사용
-      EMBEDDING_DEVICE: cpu
-      API_HOST: 0.0.0.0
-      API_PORT: 8000
-      CORS_ORIGINS: http://localhost:5174,http://localhost:3000
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL}
+      EMBEDDING_DEVICE: ${EMBEDDING_DEVICE}
+      EMBEDDING_BATCH_SIZE: ${EMBEDDING_BATCH_SIZE}
+      API_HOST: ${API_HOST}
+      API_PORT: ${API_PORT}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      LOG_LEVEL: ${LOG_LEVEL}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     ports:
       - "8000:8000"
     volumes:
@@ -64,7 +69,7 @@ services:
     ports:
       - "5174:5174"
     environment:
-      VITE_API_URL: http://localhost:8000
+      VITE_API_URL: http://localhost:${API_PORT}
     depends_on:
       - backend
     command: npm run dev -- --host 0.0.0.0

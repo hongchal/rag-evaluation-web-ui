@@ -169,6 +169,7 @@ class PipelineService:
         pipeline_type: Optional[str] = None,
         rag_id: Optional[int] = None,
         datasource_id: Optional[int] = None,
+        dataset_id: Optional[int] = None,
         skip: int = 0,
         limit: int = 100
     ) -> tuple[List[Pipeline], int]:
@@ -179,6 +180,7 @@ class PipelineService:
             pipeline_type: Pipeline 타입으로 필터링 ('normal' or 'test')
             rag_id: RAG ID로 필터링 (optional)
             datasource_id: DataSource ID로 필터링 (optional)
+            dataset_id: Evaluation Dataset ID로 필터링 (optional, test pipelines only)
             skip: 건너뛸 개수
             limit: 최대 반환 개수
             
@@ -201,6 +203,10 @@ class PipelineService:
             query = query.join(Pipeline.datasources).filter(
                 DataSource.id == datasource_id
             )
+        
+        if dataset_id is not None:
+            # Filter by evaluation dataset (test pipelines only)
+            query = query.filter(Pipeline.dataset_id == dataset_id)
         
         total = query.count()
         pipelines = query.offset(skip).limit(limit).all()
@@ -442,6 +448,8 @@ class PipelineService:
         
         total_chunks = 0
         total_docs = 0
+        total_chunking_time = 0.0
+        total_embedding_time = 0.0
         
         # Process each datasource (file or directory)
         for datasource in pipeline.datasources:
@@ -495,12 +503,22 @@ class PipelineService:
 
                 # Chunk and embed, batch upserts
                 for doc in documents:
+                    # Chunk document (measure time)
+                    chunk_start = time.time()
                     chunks = chunker.chunk_document(doc)
+                    chunk_elapsed = time.time() - chunk_start
+                    total_chunking_time += chunk_elapsed
+                    
                     if not chunks:
                         continue
 
+                    # Embed chunks (measure time)
+                    embed_start = time.time()
                     texts = [c.content for c in chunks]
                     embedding_result = embedder.embed_texts(texts)
+                    embed_elapsed = time.time() - embed_start
+                    total_embedding_time += embed_elapsed
+                    
                     dense_vectors = embedding_result.get("dense", [])
                     sparse_vectors = embedding_result.get("sparse", None)
 
@@ -592,7 +610,9 @@ class PipelineService:
         stats = {
             "total_documents": total_docs,
             "total_chunks": total_chunks,
-            "elapsed_seconds": elapsed
+            "elapsed_seconds": elapsed,
+            "chunking_time": total_chunking_time,
+            "embedding_time": total_embedding_time,
         }
         
         logger.info(
@@ -662,6 +682,8 @@ class PipelineService:
         
         total_chunks = 0
         total_docs = len(dataset.documents)
+        total_chunking_time = 0.0
+        total_embedding_time = 0.0
         
         # Process each document in dataset
         for doc in dataset.documents:
@@ -681,14 +703,22 @@ class PipelineService:
                     }
                 )
                 
-                # Chunk document
+                # Chunk document (measure time)
+                chunk_start = time.time()
                 chunks = chunker.chunk_document(base_doc)
+                chunk_elapsed = time.time() - chunk_start
+                total_chunking_time += chunk_elapsed
+                
                 if not chunks:
                     continue
                 
-                # Embed chunks
+                # Embed chunks (measure time)
+                embed_start = time.time()
                 chunk_texts = [chunk.content for chunk in chunks]
                 embedding_result = embedder.embed_texts(chunk_texts)
+                embed_elapsed = time.time() - embed_start
+                total_embedding_time += embed_elapsed
+                
                 dense_vectors = embedding_result.get("dense", [])
                 sparse_vectors = embedding_result.get("sparse", None)
                 
@@ -755,7 +785,9 @@ class PipelineService:
         stats = {
             "total_documents": total_docs,
             "total_chunks": total_chunks,
-            "elapsed_seconds": elapsed
+            "elapsed_seconds": elapsed,
+            "chunking_time": total_chunking_time,
+            "embedding_time": total_embedding_time,
         }
         
         logger.info(

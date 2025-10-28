@@ -212,7 +212,7 @@ function RAGList() {
 
               <div className="flex justify-end space-x-2">
                 <Link
-                  to="/query"
+                  to="/retrieve"
                   search={{ ragId: rag.id }}
                   className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
                 >

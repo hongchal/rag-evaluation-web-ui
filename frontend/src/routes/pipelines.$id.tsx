@@ -355,7 +355,7 @@ function PipelineDetail() {
             <div className="flex gap-3">
               {pipeline.pipeline_type === 'normal' && (
                 <Link
-                  to="/query"
+                  to="/retrieve"
                   search={{ pipelineId: pipeline.id }}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                 >

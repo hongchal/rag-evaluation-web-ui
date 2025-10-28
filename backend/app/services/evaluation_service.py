@@ -2,6 +2,7 @@
 
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+from pathlib import Path
 from sqlalchemy.orm import Session
 import structlog
 import json
@@ -17,6 +18,29 @@ from app.services.query_service import QueryService
 from app.services.qdrant_service import QdrantService
 
 logger = structlog.get_logger(__name__)
+
+
+def resolve_dataset_uri(uri: str) -> str:
+    """
+    Resolve dataset URI to actual file path.
+    
+    Args:
+        uri: Dataset URI (e.g., 'local://datasets/sample.json')
+        
+    Returns:
+        Absolute file path
+    """
+    if uri.startswith('local://'):
+        # Remove 'local://' prefix and resolve relative to backend directory
+        relative_path = uri.replace('local://', '')
+        backend_dir = Path(__file__).parent.parent.parent  # Go up to backend/
+        return str(backend_dir / relative_path)
+    elif uri.startswith('file://'):
+        # Absolute file path
+        return uri.replace('file://', '')
+    else:
+        # Assume it's already a file path
+        return uri
 
 
 class EvaluationService:
@@ -169,7 +193,10 @@ class EvaluationService:
                     continue
                 
                 # Load dataset queries
-                with open(dataset.dataset_uri, 'r', encoding='utf-8') as f:
+                dataset_path = resolve_dataset_uri(dataset.dataset_uri)
+                logger.info("loading_dataset", uri=dataset.dataset_uri, resolved_path=dataset_path)
+                
+                with open(dataset_path, 'r', encoding='utf-8') as f:
                     dataset_data = json.load(f)
                 
                 queries = dataset_data.get("queries", [])
@@ -195,8 +222,27 @@ class EvaluationService:
                         logger.warning("empty_query", query_id=query_id)
                         continue
                     
-                    # Get ground truth
-                    ground_truth = qrels.get(query_id, {})
+                    # Get ground truth from qrels (BEIR format) or relevant_doc_ids (FRAMES format)
+                    if qrels and query_id in qrels:
+                        # BEIR format: {"query_id": {"doc_id": relevance_score}}
+                        ground_truth = qrels.get(query_id, {})
+                    elif "relevant_doc_ids" in query_data:
+                        # FRAMES format: Convert list to dict with relevance score 1
+                        relevant_ids = query_data.get("relevant_doc_ids", [])
+                        ground_truth = {doc_id: 1 for doc_id in relevant_ids}
+                        logger.debug(
+                            "converted_relevant_doc_ids",
+                            query_idx=i,
+                            num_relevant=len(relevant_ids),
+                            ground_truth=ground_truth
+                        )
+                    else:
+                        ground_truth = {}
+                        logger.warning(
+                            "no_ground_truth",
+                            query_id=query_id,
+                            query_idx=i
+                        )
                     
                     # Search using pipeline
                     try:
@@ -208,11 +254,29 @@ class EvaluationService:
                         
                         total_retrieval_time += search_result.total_time
                         
+                        # Log retrieved chunk IDs and ground truth for debugging
+                        retrieved_ids = [chunk.get("id") for chunk in search_result.chunks[:10]]
+                        logger.info(
+                            "query_evaluation_debug",
+                            query_idx=i,
+                            query_id=query_id,
+                            retrieved_ids=retrieved_ids[:5],  # First 5
+                            ground_truth_ids=list(ground_truth.keys())[:5],  # First 5
+                            num_retrieved=len(retrieved_ids),
+                            num_ground_truth=len(ground_truth)
+                        )
+                        
                         # Calculate metrics for this query
                         metrics = self._calculate_query_metrics(
                             search_result.chunks,
                             ground_truth,
                             k=10
+                        )
+                        
+                        logger.info(
+                            "query_metrics_calculated",
+                            query_idx=i,
+                            metrics=metrics
                         )
                         
                         all_metrics.append(metrics)
@@ -256,6 +320,24 @@ class EvaluationService:
                     aggregated_metrics["avg_retrieval_time"] = total_retrieval_time / len(all_metrics) if all_metrics else 0.0
                     aggregated_metrics["total_time"] = total_retrieval_time
                     
+                    # Get indexing stats from pipeline (actual measured times only)
+                    indexing_stats = pipeline.indexing_stats or {}
+                    total_chunks_indexed = indexing_stats.get("total_chunks", 0)
+                    
+                    # Get actual chunking and embedding times from indexing stats
+                    # Use 0.0 if not available (will display as N/A in frontend)
+                    chunking_time = indexing_stats.get("chunking_time", 0.0)
+                    embedding_time = indexing_stats.get("embedding_time", 0.0)
+                    
+                    if chunking_time == 0.0 or embedding_time == 0.0:
+                        logger.warning(
+                            "missing_timing_data",
+                            pipeline_id=pipeline.id,
+                            has_chunking=chunking_time > 0,
+                            has_embedding=embedding_time > 0,
+                            message="Chunking/embedding times not measured (old pipeline). Please recreate pipeline for accurate timing."
+                        )
+                    
                     # Create evaluation result for this pipeline
                     result = EvaluationResult(
                         evaluation_id=evaluation.id,
@@ -266,11 +348,11 @@ class EvaluationService:
                         recall_at_k=aggregated_metrics["recall_at_k"],
                         hit_rate=aggregated_metrics["hit_rate"],
                         map_score=aggregated_metrics["map_score"],
-                        chunking_time=0.0,
-                        embedding_time=0.0,
+                        chunking_time=chunking_time,
+                        embedding_time=embedding_time,
                         retrieval_time=aggregated_metrics["avg_retrieval_time"],
                         total_time=aggregated_metrics["total_time"],
-                        num_chunks=len(corpus),
+                        num_chunks=total_chunks_indexed or len(corpus),
                         avg_chunk_size=aggregated_metrics.get("avg_chunk_size", 0.0),
                         query_results=query_results,
                         result_metadata={
@@ -335,16 +417,26 @@ class EvaluationService:
         Returns:
             Dict of metrics
         """
-        # Extract retrieved doc IDs
-        retrieved_ids = [chunk["id"] for chunk in retrieved_chunks[:k]]
+        # Extract retrieved doc IDs from metadata (not chunk point_id!)
+        # The chunk["id"] is the Qdrant point_id like "pipeline_X_dataset_Y_doc_Z_chunk_N"
+        # We need the actual doc_id from metadata like "frames_q0_doc0"
+        retrieved_ids = []
+        for chunk in retrieved_chunks[:k]:
+            metadata = chunk.get("metadata", {})
+            doc_id = metadata.get("doc_id")
+            if doc_id:
+                retrieved_ids.append(doc_id)
+            else:
+                # Fallback to chunk id if no doc_id in metadata
+                retrieved_ids.append(chunk.get("id"))
         
         # Calculate metrics
         metrics = {}
         
-        # NDCG@k
+        # NDCG@k (순위를 고려하므로 중복 포함)
         dcg = 0.0
         for i, doc_id in enumerate(retrieved_ids):
-            rel = ground_truth.get(str(doc_id), 0.0)
+            rel = ground_truth.get(doc_id, 0.0)
             dcg += (2 ** rel - 1) / (i + 2)  # i+2 because i is 0-indexed
         
         # Ideal DCG
@@ -353,35 +445,54 @@ class EvaluationService:
         
         metrics["ndcg_at_k"] = dcg / idcg if idcg > 0 else 0.0
         
-        # MRR (Mean Reciprocal Rank)
+        # MRR (Mean Reciprocal Rank) - 첫 번째 관련 문서의 순위
         for i, doc_id in enumerate(retrieved_ids):
-            if str(doc_id) in ground_truth and ground_truth[str(doc_id)] > 0:
+            if doc_id in ground_truth and ground_truth[doc_id] > 0:
                 metrics["mrr"] = 1.0 / (i + 1)
                 break
         else:
             metrics["mrr"] = 0.0
         
-        # Precision@k
-        relevant_retrieved = sum(
-            1 for doc_id in retrieved_ids
-            if str(doc_id) in ground_truth and ground_truth[str(doc_id)] > 0
-        )
-        metrics["precision_at_k"] = relevant_retrieved / k if k > 0 else 0.0
+        # Unique 문서만 추출 (중복 제거)
+        # 순서를 유지하면서 중복 제거 (첫 등장만 유지)
+        unique_retrieved_ids = []
+        seen = set()
+        for doc_id in retrieved_ids:
+            if doc_id not in seen:
+                unique_retrieved_ids.append(doc_id)
+                seen.add(doc_id)
         
-        # Recall@k
+        # Debug logging for duplicate detection
+        if len(retrieved_ids) != len(unique_retrieved_ids):
+            duplicates = len(retrieved_ids) - len(unique_retrieved_ids)
+            logger.debug(
+                "duplicate_docs_detected",
+                total_chunks=len(retrieved_ids),
+                unique_docs=len(unique_retrieved_ids),
+                duplicates=duplicates
+            )
+        
+        # Precision@k - unique 문서 기준
+        unique_relevant_retrieved = sum(
+            1 for doc_id in unique_retrieved_ids
+            if doc_id in ground_truth and ground_truth[doc_id] > 0
+        )
+        metrics["precision_at_k"] = unique_relevant_retrieved / k if k > 0 else 0.0
+        
+        # Recall@k - unique 문서 기준
         total_relevant = sum(1 for rel in ground_truth.values() if rel > 0)
         metrics["recall_at_k"] = (
-            relevant_retrieved / total_relevant if total_relevant > 0 else 0.0
+            unique_relevant_retrieved / total_relevant if total_relevant > 0 else 0.0
         )
         
-        # Hit Rate
-        metrics["hit_rate"] = 1.0 if relevant_retrieved > 0 else 0.0
+        # Hit Rate - unique 문서 기준
+        metrics["hit_rate"] = 1.0 if unique_relevant_retrieved > 0 else 0.0
         
-        # MAP (Mean Average Precision)
+        # MAP (Mean Average Precision) - unique 문서 기준
         avg_precision = 0.0
         num_relevant_seen = 0
-        for i, doc_id in enumerate(retrieved_ids):
-            if str(doc_id) in ground_truth and ground_truth[str(doc_id)] > 0:
+        for i, doc_id in enumerate(unique_retrieved_ids):
+            if doc_id in ground_truth and ground_truth[doc_id] > 0:
                 num_relevant_seen += 1
                 precision_at_i = num_relevant_seen / (i + 1)
                 avg_precision += precision_at_i

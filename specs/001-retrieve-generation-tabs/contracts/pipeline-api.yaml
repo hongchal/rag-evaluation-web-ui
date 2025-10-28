@@ -1,0 +1,317 @@
+openapi: 3.0.3
+info:
+  title: Pipeline API - Dataset Filtering
+  description: |
+    API for listing and filtering pipelines by evaluation dataset.
+    This extends the existing `/api/pipelines` endpoint with dataset filtering.
+  version: 1.0.0
+  contact:
+    name: RAG Evaluation Team
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+tags:
+  - name: pipelines
+    description: Pipeline management endpoints
+
+paths:
+  /api/pipelines:
+    get:
+      tags:
+        - pipelines
+      summary: List pipelines with optional filtering
+      description: |
+        Retrieve a list of pipelines, optionally filtered by evaluation dataset.
+        
+        **Filtering**:
+        - No filter: Returns all pipelines
+        - `dataset_id`: Returns only pipelines using that dataset
+        - `pipeline_type`: Returns only pipelines of that type (normal/test)
+        - Both filters: Returns pipelines matching both criteria
+        
+        **Use Cases**:
+        - Evaluation tab: Filter by dataset to compare pipelines on same data
+        - Retrieve/Generation tabs: Show all pipelines
+        
+        **Performance**:
+        - Target response time: < 1 second
+        
+      operationId: listPipelines
+      parameters:
+        - name: dataset_id
+          in: query
+          description: Filter by evaluation dataset ID
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+          example: 1
+        - name: pipeline_type
+          in: query
+          description: Filter by pipeline type
+          required: false
+          schema:
+            type: string
+            enum: [normal, test]
+          example: test
+      responses:
+        '200':
+          description: Pipeline list retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PipelineResponse'
+              examples:
+                all_pipelines:
+                  summary: All pipelines (no filter)
+                  value:
+                    - id: 1
+                      name: "Production RAG v1"
+                      description: "Main production pipeline"
+                      pipeline_type: "normal"
+                      rag_id: 1
+                      status: "ready"
+                      created_at: "2025-10-15T10:00:00Z"
+                      updated_at: "2025-10-15T10:30:00Z"
+                      rag:
+                        id: 1
+                        name: "Default RAG Config"
+                      datasources:
+                        - id: 1
+                          name: "Company Docs"
+                        - id: 2
+                          name: "Product Manual"
+                    - id: 2
+                      name: "BEIR Test Pipeline"
+                      description: "Testing with BEIR dataset"
+                      pipeline_type: "test"
+                      rag_id: 2
+                      dataset_id: 1
+                      status: "ready"
+                      created_at: "2025-10-20T14:00:00Z"
+                      updated_at: "2025-10-20T14:15:00Z"
+                      rag:
+                        id: 2
+                        name: "Test RAG Config"
+                      dataset:
+                        id: 1
+                        name: "BEIR SciFact"
+                        description: "Scientific fact verification"
+                filtered_by_dataset:
+                  summary: Filtered by dataset_id=1
+                  value:
+                    - id: 2
+                      name: "BEIR Test Pipeline"
+                      pipeline_type: "test"
+                      dataset_id: 1
+                      rag_id: 2
+                      status: "ready"
+                      created_at: "2025-10-20T14:00:00Z"
+                      updated_at: "2025-10-20T14:15:00Z"
+                      dataset:
+                        id: 1
+                        name: "BEIR SciFact"
+                    - id: 3
+                      name: "BEIR Test Pipeline v2"
+                      pipeline_type: "test"
+                      dataset_id: 1
+                      rag_id: 3
+                      status: "ready"
+                      created_at: "2025-10-21T09:00:00Z"
+                      updated_at: "2025-10-21T09:20:00Z"
+                      dataset:
+                        id: 1
+                        name: "BEIR SciFact"
+                empty_result:
+                  summary: No pipelines match filter
+                  value: []
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_type:
+                  summary: Invalid pipeline_type
+                  value:
+                    detail: "pipeline_type must be 'normal' or 'test'"
+                invalid_dataset_id:
+                  summary: Invalid dataset_id
+                  value:
+                    detail: "dataset_id must be a positive integer"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Failed to retrieve pipelines: Database connection error"
+
+components:
+  schemas:
+    PipelineResponse:
+      type: object
+      required:
+        - id
+        - name
+        - pipeline_type
+        - rag_id
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: Pipeline unique identifier
+          example: 1
+        name:
+          type: string
+          description: Pipeline name
+          example: "Production RAG v1"
+        description:
+          type: string
+          nullable: true
+          description: Pipeline description
+          example: "Main production pipeline with chunking strategy A"
+        pipeline_type:
+          type: string
+          enum: [normal, test]
+          description: Pipeline type (normal = DataSources, test = EvaluationDataset)
+          example: "normal"
+        rag_id:
+          type: integer
+          format: int32
+          description: RAG configuration ID
+          example: 1
+        dataset_id:
+          type: integer
+          format: int32
+          nullable: true
+          description: Evaluation dataset ID (only for test pipelines)
+          example: 1
+        status:
+          type: string
+          enum: [pending, indexing, ready, failed]
+          description: Indexing status
+          example: "ready"
+        indexing_progress:
+          type: number
+          format: float
+          nullable: true
+          minimum: 0.0
+          maximum: 100.0
+          description: Indexing progress percentage
+          example: 100.0
+        indexing_error:
+          type: string
+          nullable: true
+          description: Error message if indexing failed
+          example: null
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          example: "2025-10-15T10:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2025-10-15T10:30:00Z"
+        rag:
+          $ref: '#/components/schemas/RAGSummary'
+        dataset:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/DatasetSummary'
+        datasources:
+          type: array
+          description: Associated data sources (only for normal pipelines)
+          items:
+            $ref: '#/components/schemas/DataSourceSummary'
+
+    RAGSummary:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: RAG configuration ID
+          example: 1
+        name:
+          type: string
+          description: RAG configuration name
+          example: "Default RAG Config"
+        description:
+          type: string
+          nullable: true
+          description: RAG configuration description
+          example: "BGE-M3 embedder with BGE reranker"
+
+    DatasetSummary:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: Dataset ID
+          example: 1
+        name:
+          type: string
+          description: Dataset name
+          example: "BEIR SciFact"
+        description:
+          type: string
+          nullable: true
+          description: Dataset description
+          example: "Scientific fact verification dataset from BEIR"
+        num_queries:
+          type: integer
+          format: int32
+          description: Number of queries in dataset
+          example: 300
+
+    DataSourceSummary:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: Data source ID
+          example: 1
+        name:
+          type: string
+          description: Data source name
+          example: "Company Docs"
+        document_count:
+          type: integer
+          format: int32
+          description: Number of documents
+          example: 50
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Error message
+          example: "pipeline_type must be 'normal' or 'test'"
+

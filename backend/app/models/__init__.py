@@ -12,6 +12,8 @@ from app.models.base_document import BaseDocument
 from app.models.base_chunk import BaseChunk
 from app.models.pipeline import Pipeline, PipelineType
 from app.models.chunk import Chunk
+from app.models.chat_session import ChatSession, ChatMessage
+from app.models.prompt import PromptTemplate
 
 __all__ = [
     "Document",
@@ -30,4 +32,7 @@ __all__ = [
     "Pipeline",
     "PipelineType",
     "Chunk",
+    "ChatSession",
+    "ChatMessage",
+    "PromptTemplate",
 ]

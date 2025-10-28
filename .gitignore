@@ -34,6 +34,9 @@ dist/
 dist-ssr/
 *.local
 
+# TanStack Router auto-generated files
+frontend/src/routeTree.gen.ts
+
 # Environment
 .env
 .env.local

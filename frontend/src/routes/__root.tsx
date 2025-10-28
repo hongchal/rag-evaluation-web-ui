@@ -34,23 +34,35 @@ const RootLayout = () => (
               Data Sources
             </Link>
             <Link
-              to="/pipelines"
-              className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent [&.active]:bg-accent [&.active]:text-accent-foreground"
-            >
-              Pipelines
-            </Link>
-            <Link
               to="/datasets"
               className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent [&.active]:bg-accent [&.active]:text-accent-foreground"
             >
               Datasets
             </Link>
             <Link
-              to="/query"
+              to="/pipelines"
+              className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent [&.active]:bg-accent [&.active]:text-accent-foreground"
+            >
+              Pipelines
+            </Link>
+            <Link
+              to="/retrieve"
               search={{ pipelineId: undefined }}
               className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent [&.active]:bg-accent [&.active]:text-accent-foreground"
             >
-              Query
+              Retrieve
+            </Link>
+            <Link
+              to="/generation"
+              className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent [&.active]:bg-accent [&.active]:text-accent-foreground"
+            >
+              Generation
+            </Link>
+            <Link
+              to="/prompts"
+              className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent [&.active]:bg-accent [&.active]:text-accent-foreground"
+            >
+              Prompts
             </Link>
             <Link
               to="/evaluate"

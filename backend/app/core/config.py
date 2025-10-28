@@ -61,6 +61,11 @@ class Settings(BaseSettings):
 
     # Logging
     log_level: str = Field(default="INFO", description="Logging level")
+    
+    # AI Services
+    anthropic_api_key: Optional[str] = Field(
+        default=None, description="Anthropic API key for Claude"
+    )
 
     @field_validator("embedding_device", mode="before")
     @classmethod
@@ -103,7 +108,7 @@ class Settings(BaseSettings):
         return path
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(Path(__file__).parent.parent.parent.parent / ".env"),  # 프로젝트 루트/.env
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
