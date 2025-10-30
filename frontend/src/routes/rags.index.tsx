@@ -20,6 +20,10 @@ function RAGList() {
     chunking_params: '',
     reranking_params: '',
   })
+  
+  // Search and Sort states
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<'name-asc' | 'name-desc' | 'created-asc' | 'created-desc' | 'chunking' | 'embedding'>('created-desc')
 
   useEffect(() => {
     loadRAGs()
@@ -142,6 +146,38 @@ function RAGList() {
     }
   }
 
+  // Filter and sort RAGs
+  const filteredAndSortedRAGs = rags
+    .filter((rag) => {
+      if (!searchQuery) return true
+      const query = searchQuery.toLowerCase()
+      return (
+        rag.name.toLowerCase().includes(query) ||
+        (rag.description && rag.description.toLowerCase().includes(query)) ||
+        rag.chunking_module.toLowerCase().includes(query) ||
+        rag.embedding_module.toLowerCase().includes(query) ||
+        rag.reranking_module.toLowerCase().includes(query)
+      )
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name)
+        case 'name-desc':
+          return b.name.localeCompare(a.name)
+        case 'created-asc':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        case 'created-desc':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        case 'chunking':
+          return a.chunking_module.localeCompare(b.chunking_module)
+        case 'embedding':
+          return a.embedding_module.localeCompare(b.embedding_module)
+        default:
+          return 0
+      }
+    })
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -172,6 +208,58 @@ function RAGList() {
         </Link>
       </div>
 
+      {/* Search and Sort Controls */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+        {/* Search Input */}
+        <div className="flex-1">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search by name, description, or modules..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <svg
+              className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+        </div>
+
+        {/* Sort Dropdown */}
+        <div className="sm:w-64">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="created-desc">최신순</option>
+            <option value="created-asc">오래된순</option>
+            <option value="name-asc">이름 (A-Z)</option>
+            <option value="name-desc">이름 (Z-A)</option>
+            <option value="chunking">Chunking 모듈별</option>
+            <option value="embedding">Embedding 모듈별</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Results count */}
+      {searchQuery && (
+        <div className="mb-4 text-sm text-gray-600">
+          {filteredAndSortedRAGs.length}개의 결과를 찾았습니다 (전체 {rags.length}개 중)
+        </div>
+      )}
+
       {rags.length === 0 ? (
         <div className="bg-white shadow rounded-lg p-8 text-center">
           <p className="text-gray-500 mb-4">No RAG configurations yet</p>
@@ -182,9 +270,19 @@ function RAGList() {
             Create Your First RAG
           </Link>
         </div>
+      ) : filteredAndSortedRAGs.length === 0 ? (
+        <div className="bg-white shadow rounded-lg p-8 text-center">
+          <p className="text-gray-500 mb-4">검색 결과가 없습니다</p>
+          <button
+            onClick={() => setSearchQuery('')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            검색 초기화
+          </button>
+        </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {rags.map((rag) => (
+          {filteredAndSortedRAGs.map((rag) => (
             <div key={rag.id} className="bg-white shadow rounded-lg p-6">
               <h3 className="text-xl font-semibold mb-2">{rag.name}</h3>
               {rag.description && (
@@ -211,13 +309,6 @@ function RAGList() {
               </div>
 
               <div className="flex justify-end space-x-2">
-                <Link
-                  to="/retrieve"
-                  search={{ ragId: rag.id }}
-                  className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
-                >
-                  Test
-                </Link>
                 <Link
                   to="/rags/$id"
                   params={{ id: rag.id.toString() }}

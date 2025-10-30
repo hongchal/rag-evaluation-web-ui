@@ -5,6 +5,7 @@ import { useChatSession, type ModelConfig } from '../hooks/useChatSession'
 import { ChatMessage } from '../components/ChatMessage'
 import { ModelSelector } from '../components/ModelSelector'
 import { SourceViewer } from '../components/SourceViewer'
+import { PipelineCombobox } from '../components/PipelineCombobox'
 import type { RetrievedChunk } from '../hooks/useChatSession'
 
 export const Route = createFileRoute('/generation')({
@@ -312,29 +313,13 @@ function GenerationTab() {
           {/* Pipeline Selection */}
           <div className="bg-white rounded-lg shadow p-4">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Pipeline</h2>
-            <select
-              value={selectedPipelineId || ''}
-              onChange={(e) => setSelectedPipelineId(Number(e.target.value))}
+            <PipelineCombobox
+              pipelines={pipelines}
+              selectedPipelineId={selectedPipelineId}
+              onSelect={setSelectedPipelineId}
               disabled={isLoading}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-            >
-              <option value="">Select a pipeline</option>
-              {pipelines.map((pipeline) => (
-                <option key={pipeline.id} value={pipeline.id}>
-                  {pipeline.name}
-                </option>
-              ))}
-            </select>
-            {selectedPipelineId && (
-              <div className="mt-3 text-sm text-gray-600">
-                <div className="flex items-center justify-between">
-                  <span>Selected:</span>
-                  <span className="font-medium">
-                    {pipelines.find((p) => p.id === selectedPipelineId)?.name}
-                  </span>
-                </div>
-              </div>
-            )}
+              placeholder="Select a pipeline"
+            />
           </div>
 
           {/* Model Configuration */}

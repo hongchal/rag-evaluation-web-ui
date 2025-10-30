@@ -11,6 +11,10 @@ function CompareEvaluationsPage() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Sorting state for Summary Table
+  const [sortColumn, setSortColumn] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
 
   useEffect(() => {
     loadEvaluations()
@@ -58,6 +62,43 @@ function CompareEvaluationsPage() {
 
   const getBestValue = (metricKey: string): number => {
     return Math.max(...selectedEvaluations.map(e => getMetricValue(e, metricKey)))
+  }
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      // Toggle direction if same column
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      // Set new column with descending order by default (higher is better)
+      setSortColumn(column)
+      setSortDirection('desc')
+    }
+  }
+
+  const getSortedEvaluations = (evaluations: Evaluation[]) => {
+    if (!sortColumn) return evaluations
+
+    return [...evaluations].sort((a, b) => {
+      if (sortColumn === 'name') {
+        const aName = a.name
+        const bName = b.name
+        return sortDirection === 'asc' 
+          ? aName.localeCompare(bName)
+          : bName.localeCompare(aName)
+      }
+
+      // For metric columns
+      const aValue = getMetricValue(a, sortColumn)
+      const bValue = getMetricValue(b, sortColumn)
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue
+    })
+  }
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortColumn !== column) {
+      return <span className="text-gray-400 ml-1">↕</span>
+    }
+    return <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
   }
 
   if (loading) {
@@ -172,18 +213,25 @@ function CompareEvaluationsPage() {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                          Evaluation
+                        <th 
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none"
+                          onClick={() => handleSort('name')}
+                        >
+                          Evaluation <SortIcon column="name" />
                         </th>
                         {metrics.map((metric) => (
-                          <th key={metric.key} className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                            {metric.label}
+                          <th 
+                            key={metric.key} 
+                            className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none"
+                            onClick={() => handleSort(metric.key)}
+                          >
+                            {metric.label} <SortIcon column={metric.key} />
                           </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {selectedEvaluations.map((evaluation) => (
+                      {getSortedEvaluations(selectedEvaluations).map((evaluation) => (
                         <tr key={evaluation.id}>
                           <td className="px-4 py-3 text-sm font-medium text-gray-900 truncate max-w-xs">
                             {evaluation.name}

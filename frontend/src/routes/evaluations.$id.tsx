@@ -13,6 +13,10 @@ function EvaluationResult() {
   const [error, setError] = useState<string | null>(null)
   const [analysis, setAnalysis] = useState<string | null>(null)
   const [analyzingStatus, setAnalyzingStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  
+  // Sorting state for Pipeline Comparison table
+  const [sortColumn, setSortColumn] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
 
   useEffect(() => {
     loadEvaluation()
@@ -59,6 +63,78 @@ function EvaluationResult() {
       setAnalyzingStatus('error')
       alert(err instanceof Error ? err.message : 'Failed to generate analysis')
     }
+  }
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      // Toggle direction if same column
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      // Set new column with descending order by default (higher is better)
+      setSortColumn(column)
+      setSortDirection('desc')
+    }
+  }
+
+  const getSortedMetrics = (metrics: any[]) => {
+    if (!sortColumn) return metrics
+
+    return [...metrics].sort((a, b) => {
+      let aValue: any
+      let bValue: any
+
+      switch (sortColumn) {
+        case 'pipeline':
+          aValue = a.pipeline_name || `Pipeline #${a.pipeline_id}`
+          bValue = b.pipeline_name || `Pipeline #${b.pipeline_id}`
+          break
+        case 'ndcg':
+          aValue = a.ndcg_at_k
+          bValue = b.ndcg_at_k
+          break
+        case 'mrr':
+          aValue = a.mrr
+          bValue = b.mrr
+          break
+        case 'recall':
+          aValue = a.recall_at_k
+          bValue = b.recall_at_k
+          break
+        case 'precision':
+          aValue = a.precision_at_k
+          bValue = b.precision_at_k
+          break
+        case 'hit_rate':
+          aValue = a.hit_rate
+          bValue = b.hit_rate
+          break
+        case 'retrieval_time':
+          aValue = a.retrieval_time || 0
+          bValue = b.retrieval_time || 0
+          break
+        case 'chunks':
+          aValue = a.num_chunks || 0
+          bValue = b.num_chunks || 0
+          break
+        default:
+          return 0
+      }
+
+      if (typeof aValue === 'string') {
+        return sortDirection === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue)
+      }
+
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue
+    })
+  }
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortColumn !== column) {
+      return <span className="text-gray-400 ml-1">↕</span>
+    }
+    return <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
   }
 
   if (loading && !evaluation) {
@@ -334,18 +410,58 @@ function EvaluationResult() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Pipeline</th>
-                  <th className="text-center py-3 px-2 font-semibold text-gray-700">NDCG@10</th>
-                  <th className="text-center py-3 px-2 font-semibold text-gray-700">MRR</th>
-                  <th className="text-center py-3 px-2 font-semibold text-gray-700">Recall@10</th>
-                  <th className="text-center py-3 px-2 font-semibold text-gray-700">Precision@10</th>
-                  <th className="text-center py-3 px-2 font-semibold text-gray-700">Hit Rate</th>
-                  <th className="text-center py-3 px-2 font-semibold text-gray-700">Retrieval Time</th>
-                  <th className="text-center py-3 px-2 font-semibold text-gray-700">Chunks</th>
+                  <th 
+                    className="text-left py-3 px-4 font-semibold text-gray-700 cursor-pointer hover:bg-gray-50 select-none"
+                    onClick={() => handleSort('pipeline')}
+                  >
+                    Pipeline <SortIcon column="pipeline" />
+                  </th>
+                  <th 
+                    className="text-center py-3 px-2 font-semibold text-gray-700 cursor-pointer hover:bg-gray-50 select-none"
+                    onClick={() => handleSort('ndcg')}
+                  >
+                    NDCG@10 <SortIcon column="ndcg" />
+                  </th>
+                  <th 
+                    className="text-center py-3 px-2 font-semibold text-gray-700 cursor-pointer hover:bg-gray-50 select-none"
+                    onClick={() => handleSort('mrr')}
+                  >
+                    MRR <SortIcon column="mrr" />
+                  </th>
+                  <th 
+                    className="text-center py-3 px-2 font-semibold text-gray-700 cursor-pointer hover:bg-gray-50 select-none"
+                    onClick={() => handleSort('recall')}
+                  >
+                    Recall@10 <SortIcon column="recall" />
+                  </th>
+                  <th 
+                    className="text-center py-3 px-2 font-semibold text-gray-700 cursor-pointer hover:bg-gray-50 select-none"
+                    onClick={() => handleSort('precision')}
+                  >
+                    Precision@10 <SortIcon column="precision" />
+                  </th>
+                  <th 
+                    className="text-center py-3 px-2 font-semibold text-gray-700 cursor-pointer hover:bg-gray-50 select-none"
+                    onClick={() => handleSort('hit_rate')}
+                  >
+                    Hit Rate <SortIcon column="hit_rate" />
+                  </th>
+                  <th 
+                    className="text-center py-3 px-2 font-semibold text-gray-700 cursor-pointer hover:bg-gray-50 select-none"
+                    onClick={() => handleSort('retrieval_time')}
+                  >
+                    Retrieval Time <SortIcon column="retrieval_time" />
+                  </th>
+                  <th 
+                    className="text-center py-3 px-2 font-semibold text-gray-700 cursor-pointer hover:bg-gray-50 select-none"
+                    onClick={() => handleSort('chunks')}
+                  >
+                    Chunks <SortIcon column="chunks" />
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {metrics.map((metric: any) => (
+                {getSortedMetrics(metrics).map((metric: any) => (
                   <tr key={metric.pipeline_id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-4 font-medium text-gray-900">
                       {metric.pipeline_name || `Pipeline #${metric.pipeline_id}`}

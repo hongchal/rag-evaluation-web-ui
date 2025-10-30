@@ -130,7 +130,8 @@ class QueryService:
             query_sparse = None
         
         # Search Qdrant (retrieve more for reranking)
-        search_limit = top_k * 4 if rag.reranking_module != "none" else top_k
+        # Reduced multiplier from 4 to 2 to reduce false positives from reranking
+        search_limit = top_k * 2 if rag.reranking_module != "none" else top_k
         
         search_start = time.time()
         # Build filter conditions: 파이프라인 ID로 필터링
@@ -183,19 +184,57 @@ class QueryService:
                 )
                 for c in chunks
             ]
+            
+            # Log top 10 chunks BEFORE reranking for detailed analysis
+            before_top10_info = []
+            for i, c in enumerate(chunks[:10]):
+                doc_id = c.get("metadata", {}).get("doc_id", "N/A")
+                before_top10_info.append({
+                    "rank": i + 1,
+                    "chunk_id": c["id"],
+                    "doc_id": doc_id,
+                    "vector_score": c.get("score"),
+                    "content_preview": c["content"][:100],
+                })
+            
             reranked_docs = reranker.rerank(query, docs, top_k=top_k)
+            
             # Map back to chunks preserving the same dict structure
             id_to_chunk = {c["id"]: c for c in chunks}
             chunks = [id_to_chunk.get(d.id) for d in reranked_docs if id_to_chunk.get(d.id) is not None]
             
+            # Log top 10 chunks AFTER reranking for detailed analysis
+            after_top10_info = []
+            for i, c in enumerate(chunks[:10]):
+                doc_id = c.get("metadata", {}).get("doc_id", "N/A")
+                after_top10_info.append({
+                    "rank": i + 1,
+                    "chunk_id": c["id"],
+                    "doc_id": doc_id,
+                    "rerank_score": c.get("score"),  # This is now rerank score
+                    "content_preview": c["content"][:100],
+                })
+            
             rerank_time = time.time() - rerank_start
             
+            # Extract doc_ids for comparison
+            before_doc_ids = [info["doc_id"] for info in before_top10_info]
+            after_doc_ids = [info["doc_id"] for info in after_top10_info]
+            
             logger.info(
-                "reranking_completed",
+                "reranking_detailed_comparison",
                 pipeline_id=pipeline_id,
                 rag_id=rag.id,
+                reranking_module=rag.reranking_module,
+                query=query[:100],
+                num_candidates=len(docs),
                 num_results=len(chunks),
-                rerank_time=rerank_time
+                rerank_time=rerank_time,
+                before_doc_ids=before_doc_ids,
+                after_doc_ids=after_doc_ids,
+                docs_changed=(before_doc_ids != after_doc_ids),
+                before_top10=before_top10_info,
+                after_top10=after_top10_info,
             )
         else:
             # No reranking, just take top_k

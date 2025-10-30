@@ -1,6 +1,8 @@
 """FastAPI application entry point."""
 
 from contextlib import asynccontextmanager
+import logging
+import sys
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +11,14 @@ import structlog
 from app.core.config import settings
 from app.core.database import init_db
 
-# Configure structured logging
+# Configure Python's standard logging first
+logging.basicConfig(
+    format="%(message)s",
+    stream=sys.stdout,
+    level=logging.INFO,
+)
+
+# Configure structured logging to work WITH standard logging
 structlog.configure(
     processors=[
         structlog.stdlib.filter_by_level,

@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { api, type Pipeline, type SearchResponse, type EvaluationQuery } from '../lib/api'
+import { PipelineCombobox } from '../components/PipelineCombobox'
 
 export const Route = createFileRoute('/retrieve')({
   component: RetrieveTab,
@@ -105,19 +106,12 @@ function RetrieveTab() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Pipeline
                 </label>
-                <select
-                  value={selectedPipelineId || ''}
-                  onChange={(e) => setSelectedPipelineId(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Select Pipeline...</option>
-                  {pipelines.map((pl) => (
-                    <option key={pl.id} value={pl.id}>
-                      {pl.name} ({pl.pipeline_type})
-                    </option>
-                  ))}
-                </select>
+                <PipelineCombobox
+                  pipelines={pipelines}
+                  selectedPipelineId={selectedPipelineId}
+                  onSelect={setSelectedPipelineId}
+                  placeholder="Select Pipeline..."
+                />
               </div>
 
               <div>

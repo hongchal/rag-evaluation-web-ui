@@ -501,9 +501,17 @@ class PipelineService:
                     logger.warning("no_documents_loaded_for_datasource", datasource_id=datasource.id)
                     continue
 
-                # Chunk and embed, batch upserts
+                # STEP 1: 모든 문서를 먼저 청킹 (배치 처리를 위해)
+                logger.info(
+                    "chunking_documents_batch",
+                    datasource_id=datasource.id,
+                    document_count=len(documents)
+                )
+                
+                doc_chunks_map = []  # [(doc, chunks), ...]
+                all_chunk_texts = []
+                
                 for doc in documents:
-                    # Chunk document (measure time)
                     chunk_start = time.time()
                     chunks = chunker.chunk_document(doc)
                     chunk_elapsed = time.time() - chunk_start
@@ -511,51 +519,64 @@ class PipelineService:
                     
                     if not chunks:
                         continue
-
-                    # Embed chunks (measure time)
-                    embed_start = time.time()
-                    texts = [c.content for c in chunks]
-                    embedding_result = embedder.embed_texts(texts)
-                    embed_elapsed = time.time() - embed_start
-                    total_embedding_time += embed_elapsed
                     
-                    dense_vectors = embedding_result.get("dense", [])
-                    sparse_vectors = embedding_result.get("sparse", None)
-
+                    doc_chunks_map.append((doc, chunks))
+                    all_chunk_texts.extend([c.content for c in chunks])
+                
+                if not all_chunk_texts:
+                    logger.warning("no_chunks_generated_for_datasource", datasource_id=datasource.id)
+                    continue
+                
+                # STEP 2: 모든 청크를 한번에 임베딩 (embedder가 내부적으로 배치 처리)
+                logger.info(
+                    "embedding_chunks_batch",
+                    datasource_id=datasource.id,
+                    total_chunks=len(all_chunk_texts)
+                )
+                
+                embed_start = time.time()
+                embedding_result = embedder.embed_texts(all_chunk_texts)
+                embed_elapsed = time.time() - embed_start
+                total_embedding_time += embed_elapsed
+                
+                all_dense_vectors = embedding_result.get("dense", [])
+                all_sparse_vectors = embedding_result.get("sparse", None)
+                
+                logger.info(
+                    "embedding_completed_batch",
+                    datasource_id=datasource.id,
+                    vectors_generated=len(all_dense_vectors),
+                    embed_time=embed_elapsed
+                )
+                
+                # STEP 3: 임베딩 결과를 문서별로 분배하여 저장
+                vector_offset = 0
+                
+                for doc, chunks in doc_chunks_map:
+                    num_chunks = len(chunks)
+                    
+                    # 이 문서에 해당하는 벡터 추출
+                    dense_vectors = all_dense_vectors[vector_offset:vector_offset + num_chunks]
+                    
+                    # Sparse vectors 처리
+                    sparse_vectors = None
+                    if all_sparse_vectors is not None and isinstance(all_sparse_vectors, list):
+                        sparse_vectors = all_sparse_vectors[vector_offset:vector_offset + num_chunks]
+                    
                     # Validate sparse_vectors format
                     valid_sparse = None
-                    if sparse_vectors is not None and isinstance(sparse_vectors, list) and len(sparse_vectors) > 0:
-                        # Check if first element is a valid sparse vector (has indices and values)
+                    if sparse_vectors is not None and len(sparse_vectors) > 0:
                         first_sparse = sparse_vectors[0]
                         if isinstance(first_sparse, dict) and "indices" in first_sparse and "values" in first_sparse:
                             if isinstance(first_sparse["indices"], list) and isinstance(first_sparse["values"], list):
                                 valid_sparse = sparse_vectors
-                                logger.info(
-                                    "sparse_vectors_validated",
-                                    count=len(sparse_vectors),
-                                    first_indices_count=len(first_sparse["indices"]),
-                                    datasource_id=datasource.id
-                                )
-                            else:
-                                logger.warning("sparse_vectors_invalid_format", type_indices=type(first_sparse.get("indices")), type_values=type(first_sparse.get("values")))
-                        else:
-                            logger.warning("sparse_vectors_missing_keys", keys=list(first_sparse.keys()) if isinstance(first_sparse, dict) else type(first_sparse))
-                    else:
-                        logger.warning("sparse_vectors_none_or_empty", is_none=sparse_vectors is None, is_list=isinstance(sparse_vectors, list), length=len(sparse_vectors) if isinstance(sparse_vectors, list) else 0)
-
-                    # Payload extras merged per chunk
-                    payload_extra = {
-                        "datasource_id": datasource.id,
-                        "document_id": doc.id,
-                        "chunk_index_field": "chunk_index",
-                    }
-
+                    
                     # Build payloads with required fields (including pipeline_id)
                     payloads = []
                     for idx, ch in enumerate(chunks):
                         p = {
                             "content": ch.content,
-                            "pipeline_id": pipeline.id,  # 파이프라인별 필터링을 위해 추가
+                            "pipeline_id": pipeline.id,
                             "datasource_id": datasource.id,
                             "document_id": doc.id,
                             "chunk_index": idx,
@@ -580,7 +601,7 @@ class PipelineService:
                             content=ch.content,
                             chunk_metadata=ch.metadata or {},
                             vector_id=vector_id,
-                            token_count=None,  # TODO: Calculate token count if needed
+                            token_count=None,
                             char_count=len(ch.content)
                         )
                         self.db.add(chunk_record)
@@ -590,6 +611,7 @@ class PipelineService:
 
                     total_chunks += len(chunks)
                     total_docs += 1
+                    vector_offset += num_chunks
                 
                 logger.info(
                     "datasource_indexed",
@@ -685,7 +707,16 @@ class PipelineService:
         total_chunking_time = 0.0
         total_embedding_time = 0.0
         
-        # Process each document in dataset
+        # STEP 1: 모든 문서를 먼저 청킹 (배치 처리를 위해)
+        logger.info(
+            "chunking_dataset_documents_batch",
+            dataset_id=dataset.id,
+            document_count=total_docs
+        )
+        
+        doc_chunks_map = []  # [(doc, base_doc, chunks), ...]
+        all_chunk_texts = []
+        
         for doc in dataset.documents:
             try:
                 # Convert EvaluationDocument to BaseDocument for chunker
@@ -712,44 +743,79 @@ class PipelineService:
                 if not chunks:
                     continue
                 
-                # Embed chunks (measure time)
-                embed_start = time.time()
-                chunk_texts = [chunk.content for chunk in chunks]
-                embedding_result = embedder.embed_texts(chunk_texts)
-                embed_elapsed = time.time() - embed_start
-                total_embedding_time += embed_elapsed
+                doc_chunks_map.append((doc, base_doc, chunks))
+                all_chunk_texts.extend([chunk.content for chunk in chunks])
                 
-                dense_vectors = embedding_result.get("dense", [])
-                sparse_vectors = embedding_result.get("sparse", None)
+            except Exception as e:
+                logger.error(
+                    "document_chunking_failed",
+                    document_id=doc.doc_id,
+                    error=str(e)
+                )
+                # Continue with other documents
+        
+        if not all_chunk_texts:
+            logger.warning("no_chunks_generated_for_dataset", dataset_id=dataset.id)
+            return {
+                "total_documents": 0,
+                "total_chunks": 0,
+                "elapsed_seconds": time.time() - start_time,
+                "chunking_time": total_chunking_time,
+                "embedding_time": 0.0,
+            }
+        
+        # STEP 2: 모든 청크를 한번에 임베딩 (embedder가 내부적으로 배치 처리)
+        logger.info(
+            "embedding_dataset_chunks_batch",
+            dataset_id=dataset.id,
+            total_chunks=len(all_chunk_texts)
+        )
+        
+        embed_start = time.time()
+        embedding_result = embedder.embed_texts(all_chunk_texts)
+        embed_elapsed = time.time() - embed_start
+        total_embedding_time += embed_elapsed
+        
+        all_dense_vectors = embedding_result.get("dense", [])
+        all_sparse_vectors = embedding_result.get("sparse", None)
+        
+        logger.info(
+            "embedding_dataset_completed_batch",
+            dataset_id=dataset.id,
+            vectors_generated=len(all_dense_vectors),
+            embed_time=embed_elapsed
+        )
+        
+        # STEP 3: 임베딩 결과를 문서별로 분배하여 저장
+        vector_offset = 0
+        
+        for doc, base_doc, chunks in doc_chunks_map:
+            try:
+                num_chunks = len(chunks)
+                
+                # 이 문서에 해당하는 벡터 추출
+                dense_vectors = all_dense_vectors[vector_offset:vector_offset + num_chunks]
+                
+                # Sparse vectors 처리
+                sparse_vectors = None
+                if all_sparse_vectors is not None and isinstance(all_sparse_vectors, list):
+                    sparse_vectors = all_sparse_vectors[vector_offset:vector_offset + num_chunks]
                 
                 # Validate sparse_vectors format
                 valid_sparse_list = None
-                if sparse_vectors is not None and isinstance(sparse_vectors, list) and len(sparse_vectors) > 0:
-                    # Check if first element is a valid sparse vector (has indices and values)
+                if sparse_vectors is not None and len(sparse_vectors) > 0:
                     first_sparse = sparse_vectors[0]
                     if isinstance(first_sparse, dict) and "indices" in first_sparse and "values" in first_sparse:
                         if isinstance(first_sparse["indices"], list) and isinstance(first_sparse["values"], list):
                             valid_sparse_list = sparse_vectors
-                            logger.info(
-                                "sparse_vectors_validated",
-                                count=len(sparse_vectors),
-                                first_indices_count=len(first_sparse["indices"]),
-                                dataset_id=dataset.id
-                            )
-                        else:
-                            logger.warning("sparse_vectors_invalid_format", type_indices=type(first_sparse.get("indices")), type_values=type(first_sparse.get("values")))
-                    else:
-                        logger.warning("sparse_vectors_missing_keys", keys=list(first_sparse.keys()) if isinstance(first_sparse, dict) else type(first_sparse))
-                else:
-                    logger.warning("sparse_vectors_none_or_empty", is_none=sparse_vectors is None, is_list=isinstance(sparse_vectors, list), length=len(sparse_vectors) if isinstance(sparse_vectors, list) else 0)
                 
                 # Prepare points for Qdrant (including pipeline_id)
                 for i, (chunk, embedding) in enumerate(zip(chunks, dense_vectors)):
-                    point_id = f"pipeline_{pipeline.id}_dataset_{dataset.id}_doc_{doc.id}_chunk_{i}"
+                    point_id = f"pipeline_{pipeline.id}_dataset_{dataset.id}_doc_{doc.doc_id}_chunk_{i}"
                     payload = {
-                        "pipeline_id": pipeline.id,  # 파이프라인별 필터링을 위해 추가
+                        "pipeline_id": pipeline.id,
                         "dataset_id": dataset.id,
-                        "document_id": doc.id,
+                        "document_id": doc.doc_id,
                         "chunk_index": i,
                         "content": chunk.content,
                         "metadata": {
@@ -771,14 +837,16 @@ class PipelineService:
                     )
                 
                 total_chunks += len(chunks)
+                vector_offset += num_chunks
                 
             except Exception as e:
                 logger.error(
                     "document_indexing_failed",
-                    document_id=doc.id,
+                    document_id=doc.doc_id,
                     error=str(e)
                 )
                 # Continue with other documents
+                vector_offset += len(chunks)
         
         elapsed = time.time() - start_time
         

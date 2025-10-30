@@ -184,11 +184,21 @@ def delete_pipeline(
     
     This only deletes the pipeline record, not the RAG configuration or datasources.
     """
-    success = pipeline_service.delete_pipeline(pipeline_id)
-    if not success:
+    try:
+        success = pipeline_service.delete_pipeline(pipeline_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Pipeline {pipeline_id} not found"
+            )
+        logger.info("pipeline_deleted_via_api", pipeline_id=pipeline_id)
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404)
+        raise
+    except Exception as e:
+        logger.error("pipeline_deletion_failed", pipeline_id=pipeline_id, error=str(e), exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Pipeline {pipeline_id} not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete pipeline: {str(e)}"
         )
-    logger.info("pipeline_deleted_via_api", pipeline_id=pipeline_id)
 
