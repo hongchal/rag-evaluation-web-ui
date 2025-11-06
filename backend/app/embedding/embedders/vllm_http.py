@@ -137,30 +137,66 @@ class VLLMHTTPEmbedder:
                     response.raise_for_status()
 
                     result = response.json()
+                    
+                    # Log the actual response structure for debugging
+                    logger.info(
+                        "vllm_response_received",
+                        response_keys=list(result.keys()) if isinstance(result, dict) else type(result).__name__,
+                        response_sample=str(result)[:500]  # First 500 chars
+                    )
 
                     # Extract embeddings from response
-                    # OpenAI format: {"data": [{"index": 0, "embedding": [...]}, ...]}
-                    data_items = result["data"]
+                    # Support multiple response formats
+                    embeddings = None
+                    
+                    # Format 1: OpenAI format {"data": [{"index": 0, "embedding": [...]}, ...]}
+                    if "data" in result and isinstance(result["data"], list):
+                        data_items = result["data"]
+                        
+                        # Check if items have index and embedding
+                        if data_items and isinstance(data_items[0], dict) and "embedding" in data_items[0]:
+                            # Validate indices
+                            expected_indices = set(range(len(texts)))
+                            actual_indices = {item.get("index", -1) for item in data_items}
 
-                    # Validate indices
-                    expected_indices = set(range(len(texts)))
-                    actual_indices = {item.get("index", -1) for item in data_items}
+                            if expected_indices != actual_indices:
+                                logger.error(
+                                    "invalid_embedding_indices",
+                                    expected=expected_indices,
+                                    actual=actual_indices,
+                                )
+                                raise ValueError(
+                                    f"Missing or invalid indices in response: "
+                                    f"expected {len(texts)} items with indices {expected_indices}, "
+                                    f"got {actual_indices}"
+                                )
 
-                    if expected_indices != actual_indices:
+                            # Sort by index to ensure correct order
+                            sorted_items = sorted(data_items, key=lambda x: x["index"])
+                            embeddings = [item["embedding"] for item in sorted_items]
+                        else:
+                            # Data is directly a list of embeddings
+                            embeddings = data_items
+                    
+                    # Format 2: Direct embeddings list {"embeddings": [[...], ...]}
+                    elif "embeddings" in result and isinstance(result["embeddings"], list):
+                        embeddings = result["embeddings"]
+                    
+                    # Format 3: Direct array response [[...], ...]
+                    elif isinstance(result, list):
+                        embeddings = result
+                    
+                    # If still no embeddings found, raise error
+                    if embeddings is None:
                         logger.error(
-                            "invalid_embedding_indices",
-                            expected=expected_indices,
-                            actual=actual_indices,
+                            "unsupported_response_format",
+                            available_keys=list(result.keys()) if isinstance(result, dict) else None,
+                            response_type=type(result).__name__
                         )
                         raise ValueError(
-                            f"Missing or invalid indices in response: "
-                            f"expected {len(texts)} items with indices {expected_indices}, "
-                            f"got {actual_indices}"
+                            f"Unsupported response format. Available keys: "
+                            f"{list(result.keys()) if isinstance(result, dict) else 'N/A'}"
                         )
-
-                    # Sort by index to ensure correct order
-                    sorted_items = sorted(data_items, key=lambda x: x["index"])
-                    embeddings = [item["embedding"] for item in sorted_items]
 
                     # Add delay to avoid overwhelming the server
                     time.sleep(0.5)

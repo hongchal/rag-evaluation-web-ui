@@ -527,7 +527,7 @@ class PipelineService:
                     logger.warning("no_chunks_generated_for_datasource", datasource_id=datasource.id)
                     continue
                 
-                # STEP 2: 모든 청크를 한번에 임베딩 (embedder가 내부적으로 배치 처리)
+                # STEP 2: 임베딩 (Late Chunking 최적화 지원)
                 logger.info(
                     "embedding_chunks_batch",
                     datasource_id=datasource.id,
@@ -535,12 +535,34 @@ class PipelineService:
                 )
                 
                 embed_start = time.time()
-                embedding_result = embedder.embed_texts(all_chunk_texts)
+                
+                # Check if Late Chunking optimization is available
+                use_late_chunking = (
+                    rag.chunking_module == "late_chunking" and 
+                    hasattr(embedder, 'embed_document_with_late_chunking')
+                )
+                
+                if use_late_chunking:
+                    # Use Late Chunking optimization (문서별로 1번의 forward pass)
+                    logger.info("using_late_chunking_optimization", document_count=len(doc_chunks_map))
+                    all_dense_vectors = []
+                    all_sparse_vectors = None  # Late chunking doesn't support sparse vectors yet
+                    
+                    for doc, chunks in doc_chunks_map:
+                        chunk_texts = [c.content for c in chunks]
+                        # Call optimized method with full document text
+                        doc_embeddings = embedder.embed_document_with_late_chunking(
+                            doc.content, chunk_texts
+                        )
+                        all_dense_vectors.extend(doc_embeddings)
+                else:
+                    # Traditional batched embedding
+                    embedding_result = embedder.embed_texts(all_chunk_texts)
+                    all_dense_vectors = embedding_result.get("dense", [])
+                    all_sparse_vectors = embedding_result.get("sparse", None)
+                
                 embed_elapsed = time.time() - embed_start
                 total_embedding_time += embed_elapsed
-                
-                all_dense_vectors = embedding_result.get("dense", [])
-                all_sparse_vectors = embedding_result.get("sparse", None)
                 
                 logger.info(
                     "embedding_completed_batch",

@@ -34,8 +34,8 @@ const CHUNKING_MODULES = [
   },
   {
     value: 'late_chunking',
-    label: 'Late Chunking (Jina v3)',
-    description: 'Jina v3 모델을 사용한 Late Chunking',
+    label: 'Late Chunking ⚡',
+    description: 'Jina v3 전용 (자동 선택, 10배 빠름)',
     defaultParams: { 
       sentences_per_chunk: 3,
       min_chunk_tokens: 50,
@@ -65,6 +65,14 @@ const EMBEDDING_MODULES = [
       base_url: 'http://localhost:8001', 
       model_name: 'BAAI/bge-m3',
       embedding_dim: 1024 
+    },
+  },
+  {
+    value: 'jina_late_chunking',
+    label: 'Jina v3 (Late Chunking 최적화 지원) ⚡',
+    description: 'Late Chunking과 함께 사용 시 10배 빠름',
+    defaultParams: {
+      model_name: 'jinaai/jina-embeddings-v3'
     },
   },
 ]
@@ -114,11 +122,24 @@ function CreateRAG() {
 
   const handleChunkingModuleChange = (value: string) => {
     const module = CHUNKING_MODULES.find((m) => m.value === value)
-    setConfig({
+    
+    // Late Chunking 선택 시 Jina embedder 강제
+    let newConfig = {
       ...config,
       chunking_module: value,
       chunking_params: module?.defaultParams || {},
-    })
+    }
+    
+    if (value === 'late_chunking') {
+      const jinaModule = EMBEDDING_MODULES.find((m) => m.value === 'jina_late_chunking')
+      newConfig = {
+        ...newConfig,
+        embedding_module: 'jina_late_chunking',
+        embedding_params: jinaModule?.defaultParams || {},
+      }
+    }
+    
+    setConfig(newConfig)
   }
 
   const handleEmbeddingModuleChange = (value: string) => {

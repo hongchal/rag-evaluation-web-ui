@@ -13,6 +13,7 @@ from app.chunking.chunkers.late_chunking import LateChunkingWrapper
 from app.embedding.embedders.bge_m3 import BGEM3Embedder
 from app.embedding.embedders.matryoshka import MatryoshkaEmbedder
 from app.embedding.embedders.vllm_http import VLLMHTTPEmbedder
+from app.embedding.embedders.jina_late_chunking import JinaLocalLateChunkingEmbedder
 
 # Rerankers
 from app.reranking.rerankers.none import NoneReranker
@@ -77,6 +78,8 @@ class RAGFactory:
             embedder = MatryoshkaEmbedder(**params)
         elif module == "vllm_http":
             embedder = VLLMHTTPEmbedder(**params)
+        elif module == "jina_late_chunking":
+            embedder = JinaLocalLateChunkingEmbedder(**params)
         else:
             raise ValueError(f"Unknown embedder: {module}")
         

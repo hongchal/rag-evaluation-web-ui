@@ -148,7 +148,10 @@ export function PipelineCombobox({
               />
             ) : selectedPipeline ? (
               <div className="flex items-center gap-2">
-                <span className="text-gray-900 font-medium truncate">
+                <span 
+                  className="text-gray-900 font-medium truncate"
+                  title={selectedPipeline.name}
+                >
                   {selectedPipeline.name}
                 </span>
                 <span
@@ -183,7 +186,7 @@ export function PipelineCombobox({
 
       {/* Dropdown List */}
       {isOpen && !disabled && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-80 overflow-hidden">
+        <div className="absolute z-50 w-full min-w-[500px] mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-80 overflow-hidden">
           {filteredPipelines.length > 0 ? (
             <ul ref={listRef} className="overflow-y-auto max-h-80">
               {/* Normal Pipelines Section */}
@@ -217,9 +220,9 @@ export function PipelineCombobox({
                         onMouseEnter={() => setHighlightedIndex(index)}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="font-medium text-gray-900 truncate">
+                              <span className="font-medium text-gray-900 break-words">
                                 {pipeline.name}
                               </span>
                               {isSelected && (
@@ -238,7 +241,7 @@ export function PipelineCombobox({
                             </div>
                             <div className="flex items-center gap-2 text-xs text-gray-500">
                               {pipeline.datasource && (
-                                <span className="truncate">
+                                <span className="break-words">
                                   📁 {pipeline.datasource.name}
                                 </span>
                               )}
@@ -283,9 +286,9 @@ export function PipelineCombobox({
                         onMouseEnter={() => setHighlightedIndex(globalIndex)}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="font-medium text-gray-900 truncate">
+                              <span className="font-medium text-gray-900 break-words">
                                 {pipeline.name}
                               </span>
                               {isSelected && (
@@ -304,7 +307,7 @@ export function PipelineCombobox({
                             </div>
                             <div className="flex items-center gap-2 text-xs text-gray-500">
                               {pipeline.dataset && (
-                                <span className="truncate">
+                                <span className="break-words">
                                   📊 {pipeline.dataset.name}
                                 </span>
                               )}

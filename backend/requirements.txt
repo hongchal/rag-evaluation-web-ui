@@ -19,6 +19,8 @@ peft==0.13.2
 torch==2.6.0
 tiktoken==0.8.0
 sentence-transformers==3.3.1
+transformers>=4.36.0  # For Jina v3 embeddings
+einops>=0.7.0  # Required by Jina v3 embeddings
 
 # Document Processing
 PyPDF2==3.0.1

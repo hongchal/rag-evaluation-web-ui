@@ -119,7 +119,7 @@ class RAGService:
             )
         
         # Validate embedding module
-        valid_embedders = ["bge_m3", "matryoshka", "vllm_http"]
+        valid_embedders = ["bge_m3", "matryoshka", "vllm_http", "jina_late_chunking"]
         if embedding_module not in valid_embedders:
             raise ValueError(
                 f"Invalid embedding module: {embedding_module}. "
