@@ -58,10 +58,10 @@ pip list | grep anthropic  # anthropic==0.69.0
 pip list | grep httpx      # httpx==0.27.2
 
 # Start backend
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 ```
 
-**Backend runs at**: `http://localhost:8000`
+**Backend runs at**: `http://localhost:8001`
 
 ### 3. Frontend Setup
 
@@ -79,7 +79,7 @@ npm list react                    # 19.1.1
 npm run dev
 ```
 
-**Frontend runs at**: `http://localhost:5173`
+**Frontend runs at**: `http://localhost:5174`
 
 ### 4. Infrastructure (Docker Compose)
 
@@ -165,7 +165,7 @@ frontend/src/routes/evaluate.tsx        # Add dataset filtering
    ```
 
 4. **Test**
-   - Visit `http://localhost:5173/retrieve`
+   - Visit `http://localhost:5174/retrieve`
    - Verify search works
    - Check navigation links
 
@@ -616,7 +616,7 @@ npm test
 
 ```bash
 # Test answer endpoint
-curl -X POST http://localhost:8000/api/query/answer \
+curl -X POST http://localhost:8001/api/query/answer \
   -H "Content-Type: application/json" \
   -d '{
     "pipeline_id": 1,

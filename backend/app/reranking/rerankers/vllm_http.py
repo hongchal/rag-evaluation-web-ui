@@ -7,6 +7,7 @@ import httpx
 import structlog
 
 from .base_reranker import BaseReranker, RetrievedDocument
+from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
 
@@ -29,7 +30,7 @@ class VLLMHTTPReranker(BaseReranker):
 
     def __init__(
         self,
-        base_url: str = "http://localhost:8001",
+        base_url: str | None = None,
         model_name: str = "BAAI/bge-reranker-v2-m3",
         timeout: float = 120.0,
         max_retries: int = 3,
@@ -38,11 +39,15 @@ class VLLMHTTPReranker(BaseReranker):
         Initialize vLLM HTTP reranker.
 
         Args:
-            base_url: vLLM server base URL
+            base_url: vLLM server base URL (defaults to settings.vllm_reranking_url)
+                     빈 문자열('')도 None으로 처리하여 환경변수 기본값 사용
             model_name: Model name/identifier
             timeout: HTTP request timeout in seconds
             max_retries: Maximum number of retries on failure
         """
+        # Use config default if not provided or empty string
+        if not base_url:  # None or empty string
+            base_url = settings.vllm_reranking_url
         self.base_url = base_url.rstrip("/")
         self.model_name = model_name
         self.timeout = timeout

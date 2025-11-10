@@ -9,6 +9,7 @@ from app.models.pipeline import Pipeline, PipelineType
 from app.models.evaluation_query import EvaluationQuery
 from app.services.rag_factory import RAGFactory
 from app.services.qdrant_service import QdrantService
+from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
 
@@ -72,8 +73,8 @@ class QueryService:
         1. Load Pipeline to get RAG configuration and datasource IDs
         2. Create embedder and reranker from RAG config
         3. Embed query
-        4. Search Qdrant (retrieve top_k * 4 for reranking)
-        5. Rerank results (top_k * 4 → top_k)
+        4. Search Qdrant (retrieve top_k * rerank_multiplier for reranking)
+        5. Rerank results (top_k * rerank_multiplier → top_k)
         
         Args:
             pipeline_id: Pipeline ID (includes RAG + DataSources)
@@ -130,8 +131,9 @@ class QueryService:
             query_sparse = None
         
         # Search Qdrant (retrieve more for reranking)
-        # Reduced multiplier from 4 to 2 to reduce false positives from reranking
-        search_limit = top_k * 2 if rag.reranking_module != "none" else top_k
+        # Use configurable multiplier (default: 3x)
+        # This allows reranker to have more candidates to choose from
+        search_limit = top_k * settings.rerank_multiplier if rag.reranking_module != "none" else top_k
         
         search_start = time.time()
         # Build filter conditions: 파이프라인 ID로 필터링
@@ -200,8 +202,14 @@ class QueryService:
             reranked_docs = reranker.rerank(query, docs, top_k=top_k)
             
             # Map back to chunks preserving the same dict structure
+            # IMPORTANT: Update score with rerank score!
             id_to_chunk = {c["id"]: c for c in chunks}
-            chunks = [id_to_chunk.get(d.id) for d in reranked_docs if id_to_chunk.get(d.id) is not None]
+            chunks = []
+            for d in reranked_docs:
+                if d.id in id_to_chunk:
+                    chunk = id_to_chunk[d.id].copy()  # Copy to avoid mutation
+                    chunk["score"] = d.score  # Update with rerank score!
+                    chunks.append(chunk)
             
             # Log top 10 chunks AFTER reranking for detailed analysis
             after_top10_info = []

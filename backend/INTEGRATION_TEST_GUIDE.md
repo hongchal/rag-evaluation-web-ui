@@ -268,7 +268,7 @@ docker-compose logs -f qdrant
 
 ## 📚 참고 자료
 
-- API 문서: `http://localhost:8000/docs` (서버 실행 후)
+- API 문서: `http://localhost:8001/docs` (서버 실행 후)
 - 테스트 결과: `backend/TEST_SUMMARY.md`
 - 데이터베이스 스키마: `backend/app/models/`
 - API 엔드포인트: `backend/app/api/routes/`

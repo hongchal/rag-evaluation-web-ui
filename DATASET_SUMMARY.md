@@ -186,13 +186,13 @@ python backend/scripts/dataset_registry.py list
 ### 3단계: API로 사용
 ```bash
 # 등록된 데이터셋 조회
-curl http://localhost:8000/api/datasets
+curl http://localhost:8001/api/datasets
 
 # RAG 설정 생성
-curl -X POST http://localhost:8000/api/rags -d '{...}'
+curl -X POST http://localhost:8001/api/rags -d '{...}'
 
 # 평가 실행
-curl -X POST http://localhost:8000/api/evaluations -d '{
+curl -X POST http://localhost:8001/api/evaluations -d '{
   "rag_id": 1,
   "dataset_id": 1
 }'

@@ -61,6 +61,11 @@ QDRANT_URL=http://localhost:6335
 # AI Services
 ANTHROPIC_API_KEY=your-api-key-here
 
+# vLLM Services (선택사항)
+VLLM_EMBEDDING_URL=http://localhost:8000
+VLLM_RERANKING_URL=http://localhost:8002
+VLLM_GENERATION_URL=http://localhost:8003
+
 # 기타 설정들...
 ```
 
@@ -199,16 +204,23 @@ docker-compose up -d
 
 # Access the application
 # Frontend: http://localhost:5174
-# Backend API: http://localhost:8000
-# API Docs: http://localhost:8000/docs
+# Backend API: http://localhost:8001
+# API Docs: http://localhost:8001/docs
 # PostgreSQL: localhost:5433 (포트 충돌 방지)
 # Qdrant: localhost:6335 (포트 충돌 방지)
 ```
 
 **포트 설정:**
+- Backend API: `8001:8001` (호스트:컨테이너)
 - PostgreSQL: `5433:5432` (호스트:컨테이너)
 - Qdrant: `6335:6333`, `6336:6334`
 - 다른 서비스와 포트 충돌을 피하기 위해 기본 포트에서 변경되었습니다
+
+**vLLM 외부 서버 (선택사항):**
+- vLLM Embedding: `localhost:8000` (기본값)
+- vLLM Reranking: `localhost:8002` (기본값)
+- vLLM Generation: `localhost:8003` (기본값)
+- 환경변수로 다른 서버 URL 지정 가능
 
 ### Local Development (mise 없이)
 
@@ -224,12 +236,11 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Copy environment file
-cp env.example .env
-# Edit .env with your configuration
+# 환경변수는 프로젝트 루트의 .env 파일 사용
+# (backend/env.example은 더 이상 사용하지 않음)
 
 # Run the server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 ```
 
 #### Frontend Setup
@@ -290,7 +301,57 @@ rag-evaluation-web-ui/
 
 ## API Documentation
 
-Once the backend is running, visit `http://localhost:8000/docs` for interactive API documentation.
+Once the backend is running, visit `http://localhost:8001/docs` for interactive API documentation.
+
+## vLLM 외부 서버 설정 (선택사항)
+
+RAG 시스템에서 외부 vLLM 서버를 사용하여 임베딩, 리랭킹, 생성을 수행할 수 있습니다.
+
+### 설정 방법
+
+`.env` 파일에서 vLLM 서버 URL을 지정:
+
+```bash
+VLLM_EMBEDDING_URL=http://localhost:8000
+VLLM_RERANKING_URL=http://localhost:8002
+VLLM_GENERATION_URL=http://localhost:8003
+```
+
+### 사용 예시
+
+RAG 설정 생성 시 `base_url`을 생략하면 환경변수의 기본값이 사용됩니다:
+
+```json
+{
+  "embedding": {
+    "module": "vllm_http",
+    "params": {
+      "model_name": "Qwen/Qwen2.5-Coder-Instruct-8B",
+      "embedding_dim": 4096
+    }
+  },
+  "reranking": {
+    "module": "vllm_http",
+    "params": {
+      "model_name": "BAAI/bge-reranker-v2-m3"
+    }
+  }
+}
+```
+
+특정 RAG 설정에만 다른 URL을 사용하려면 `base_url`을 명시적으로 지정:
+
+```json
+{
+  "embedding": {
+    "module": "vllm_http",
+    "params": {
+      "base_url": "https://custom-server.com",
+      "model_name": "Qwen/Qwen2.5-Coder-Instruct-8B"
+    }
+  }
+}
+```
 
 ## License
 

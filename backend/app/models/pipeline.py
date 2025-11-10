@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Optional, List
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table, Enum as SQLEnum, JSON, Float
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 import enum
 
 from app.core.database import Base
@@ -59,7 +59,7 @@ class Pipeline(Base):
     # RAG Configuration 참조
     rag_id = Column(
         Integer,
-        ForeignKey("rag_configurations.id", ondelete="CASCADE"),
+        ForeignKey("rag_configurations.id", ondelete="RESTRICT"),
         nullable=False,
         index=True
     )
@@ -89,7 +89,7 @@ class Pipeline(Base):
 
     # Relationships
     rag = relationship("RAGConfiguration", backref="pipelines")
-    dataset = relationship("EvaluationDataset", backref="pipelines")
+    dataset = relationship("EvaluationDataset", backref=backref("pipelines", passive_deletes=True))
     datasources = relationship(
         "DataSource",
         secondary=pipeline_datasources,

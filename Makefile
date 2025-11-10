@@ -16,13 +16,13 @@ dev: ## Start development servers (requires Docker services)
 	@echo "Starting Docker services..."
 	docker compose up -d postgres qdrant
 	@echo "Starting backend and frontend..."
-	@echo "Backend: http://localhost:8000"
+	@echo "Backend: http://localhost:8001"
 	@echo "Frontend: http://localhost:5174"
 	@echo ""
 	@echo "Run 'make backend' and 'make frontend' in separate terminals"
 
 backend: ## Start backend server
-	cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 
 frontend: ## Start frontend server
 	cd frontend && npm run dev

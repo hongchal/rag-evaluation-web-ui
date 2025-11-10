@@ -50,8 +50,11 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS}
       LOG_LEVEL: ${LOG_LEVEL}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      VLLM_EMBEDDING_URL: ${VLLM_EMBEDDING_URL}
+      VLLM_RERANKING_URL: ${VLLM_RERANKING_URL}
+      VLLM_GENERATION_URL: ${VLLM_GENERATION_URL}
     ports:
-      - "8000:8000"
+      - "8001:8001"
     volumes:
       - ./backend/uploads:/app/uploads
     depends_on:
@@ -59,7 +62,7 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_healthy
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 
   frontend:
     build:

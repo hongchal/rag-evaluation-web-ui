@@ -47,13 +47,23 @@ class Settings(BaseSettings):
         default=50, description="Default chunk overlap"
     )
 
+    # Retrieval & Reranking
+    default_top_k: int = Field(
+        default=10,
+        description="Default number of results to return (used across search, answer, and evaluation)"
+    )
+    rerank_multiplier: int = Field(
+        default=3, 
+        description="Multiplier for initial retrieval before reranking (retrieve top_k * multiplier, then rerank to top_k)"
+    )
+
     # File Storage
     upload_dir: str = Field(default="./uploads", description="Directory for uploads")
     max_file_size_mb: int = Field(default=50, description="Max file size in MB")
 
     # API
     api_host: str = Field(default="0.0.0.0", description="API host")
-    api_port: int = Field(default=8000, description="API port")
+    api_port: int = Field(default=8001, description="API port")
     cors_origins: str = Field(
         default="http://localhost:5174,http://localhost:3000",
         description="Comma-separated CORS origins",
@@ -65,6 +75,20 @@ class Settings(BaseSettings):
     # AI Services
     anthropic_api_key: Optional[str] = Field(
         default=None, description="Anthropic API key for Claude"
+    )
+    
+    # vLLM Services
+    vllm_embedding_url: str = Field(
+        default="http://localhost:8000", 
+        description="vLLM embedding server URL"
+    )
+    vllm_reranking_url: str = Field(
+        default="http://localhost:8002", 
+        description="vLLM reranking server URL"
+    )
+    vllm_generation_url: str = Field(
+        default="http://localhost:8003", 
+        description="vLLM generation server URL"
     )
 
     @field_validator("embedding_device", mode="before")

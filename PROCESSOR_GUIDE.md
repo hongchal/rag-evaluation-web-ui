@@ -36,7 +36,7 @@ import requests
 # Docling으로 처리
 with open('document.pdf', 'rb') as f:
     response = requests.post(
-        'http://localhost:8000/api/datasources/upload',
+        'http://localhost:8001/api/datasources/upload',
         files={'file': f},
         data={'processor_type': 'docling'}  # pypdf2, pdfplumber, docling
     )
@@ -47,17 +47,17 @@ print(response.json())
 #### cURL
 ```bash
 # PyPDF2 (빠름)
-curl -X POST http://localhost:8000/api/datasources/upload \
+curl -X POST http://localhost:8001/api/datasources/upload \
   -F "file=@document.pdf" \
   -F "processor_type=pypdf2"
 
 # pdfplumber (기본값)
-curl -X POST http://localhost:8000/api/datasources/upload \
+curl -X POST http://localhost:8001/api/datasources/upload \
   -F "file=@document.pdf" \
   -F "processor_type=pdfplumber"
 
 # Docling (고급)
-curl -X POST http://localhost:8000/api/datasources/upload \
+curl -X POST http://localhost:8001/api/datasources/upload \
   -F "file=@document.pdf" \
   -F "processor_type=docling"
 ```
@@ -67,7 +67,7 @@ curl -X POST http://localhost:8000/api/datasources/upload \
 같은 PDF를 3가지 방법으로 모두 처리하고 결과를 비교할 수 있습니다:
 
 ```bash
-curl -X POST http://localhost:8000/api/datasources/compare-processors \
+curl -X POST http://localhost:8001/api/datasources/compare-processors \
   -F "file=@document.pdf"
 ```
 
@@ -170,7 +170,7 @@ docling==2.58.0
 
 ```bash
 # 1. 비교 API로 3가지 모두 테스트
-curl -X POST http://localhost:8000/api/datasources/compare-processors \
+curl -X POST http://localhost:8001/api/datasources/compare-processors \
   -F "file=@technical_paper.pdf" \
   -o comparison.json
 
@@ -178,7 +178,7 @@ curl -X POST http://localhost:8000/api/datasources/compare-processors \
 cat comparison.json | jq '.summary'
 
 # 3. 최적의 프로세서로 업로드
-curl -X POST http://localhost:8000/api/datasources/upload \
+curl -X POST http://localhost:8001/api/datasources/upload \
   -F "file=@technical_paper.pdf" \
   -F "processor_type=docling"
 ```

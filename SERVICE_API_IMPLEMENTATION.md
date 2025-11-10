@@ -323,10 +323,10 @@ cd backend
 uvicorn app.main:app --reload
 
 # API 문서
-http://localhost:8000/docs
+http://localhost:8001/docs
 
 # 기본 RAG 자동 생성됨
-GET http://localhost:8000/api/v1/rags
+GET http://localhost:8001/api/v1/rags
 ```
 
 ---

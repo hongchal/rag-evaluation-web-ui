@@ -245,10 +245,21 @@ class RAGService:
         
         Returns:
             True if deleted, False if not found
+            
+        Raises:
+            ValueError: If RAG is used by existing pipelines
         """
+        from app.models.pipeline import Pipeline
+        
         rag = RAGService.get_rag(db, rag_id)
         if not rag:
             return False
+        
+        # Check if RAG is used by any pipelines
+        pipeline_count = db.query(Pipeline).filter(Pipeline.rag_id == rag_id).count()
+        if pipeline_count > 0:
+            logger.warning("rag_delete_blocked", rag_id=rag_id, pipeline_count=pipeline_count)
+            raise ValueError(f"Cannot delete RAG: {pipeline_count} pipeline(s) are using this RAG configuration. Please delete the pipelines first.")
         
         db.delete(rag)
         db.commit()

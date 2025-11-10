@@ -109,10 +109,16 @@ def delete_rag(
     db: Session = Depends(get_db),
 ):
     """Delete a RAG configuration."""
-    success = RAGService.delete_rag(db, rag_id)
-    if not success:
+    try:
+        success = RAGService.delete_rag(db, rag_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"RAG configuration {rag_id} not found"
+            )
+    except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"RAG configuration {rag_id} not found"
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e)
         )
 

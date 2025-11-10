@@ -62,9 +62,8 @@ const EMBEDDING_MODULES = [
     label: 'vLLM HTTP',
     description: 'vLLM 서버를 통한 임베딩',
     defaultParams: { 
-      base_url: 'http://localhost:8001', 
-      model_name: 'BAAI/bge-m3',
-      embedding_dim: 1024 
+      model_name: 'Qwen/Qwen3-Embedding-0.6B',
+      embedding_dim: 4096 
     },
   },
   {
@@ -100,7 +99,9 @@ const RERANKING_MODULES = [
     value: 'vllm_http',
     label: 'vLLM HTTP',
     description: 'vLLM 서버를 통한 리랭킹',
-    defaultParams: { base_url: 'http://localhost:8001', model_name: 'BAAI/bge-reranker-v2-m3' },
+    defaultParams: { 
+      model_name: 'BAAI/bge-reranker-v2-m3' 
+    },
   },
 ]
 
@@ -351,7 +352,7 @@ function CreateRAG() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Base URL *
+                      Base URL (선택사항)
                     </label>
                     <input
                       type="text"
@@ -364,8 +365,11 @@ function CreateRAG() {
                         }
                       })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="예: https://example.com:8000"
+                      placeholder="비워두면 환경변수 기본값 사용 (예: http://localhost:8000)"
                     />
+                    <p className="mt-1 text-xs text-gray-500">
+                      💡 비워두면 backend의 VLLM_EMBEDDING_URL 환경변수 사용
+                    </p>
                   </div>
 
                   <div>
@@ -440,6 +444,55 @@ function CreateRAG() {
                 </select>
               </div>
 
+              {/* vLLM HTTP: Special UI for common parameters */}
+              {config.reranking_module === 'vllm_http' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Model Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={config.reranking_params.model_name || ''}
+                      onChange={(e) => setConfig({
+                        ...config,
+                        reranking_params: {
+                          ...config.reranking_params,
+                          model_name: e.target.value
+                        }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="예: BAAI/bge-reranker-v2-m3"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      💡 vLLM 서버에 로드된 리랭킹 모델 이름을 입력하세요
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Base URL (선택사항)
+                    </label>
+                    <input
+                      type="text"
+                      value={config.reranking_params.base_url || ''}
+                      onChange={(e) => setConfig({
+                        ...config,
+                        reranking_params: {
+                          ...config.reranking_params,
+                          base_url: e.target.value
+                        }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="비워두면 환경변수 기본값 사용 (예: http://localhost:8002)"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      💡 비워두면 backend의 VLLM_RERANKING_URL 환경변수 사용
+                    </p>
+                  </div>
+                </>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Parameters (JSON)
@@ -457,6 +510,11 @@ function CreateRAG() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                   rows={4}
                 />
+                {config.reranking_module === 'vllm_http' && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    ℹ️ model_name, base_url은 위 필드로 관리됩니다
+                  </p>
+                )}
               </div>
             </div>
           </div>

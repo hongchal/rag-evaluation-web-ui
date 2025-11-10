@@ -102,7 +102,7 @@ transformers>=4.36.0  # For Jina v3 embeddings
 #### API 호출 예시
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/rags" \
+curl -X POST "http://localhost:8001/api/v1/rags" \
   -H "Content-Type: application/json" \
   -d @jina_late_chunking_config.json
 ```

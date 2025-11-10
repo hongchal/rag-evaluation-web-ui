@@ -2,6 +2,8 @@
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
+from app.core.config import settings
+
 
 class RetrievedChunk(BaseModel):
     """검색된 청크"""
@@ -28,7 +30,7 @@ class SearchRequest(BaseModel):
     """검색 요청"""
     query: str = Field(..., min_length=1, description="Search query")
     pipeline_id: int = Field(..., description="Pipeline ID to use (includes RAG + DataSources)")
-    top_k: int = Field(default=10, ge=1, le=100, description="Number of results to return")
+    top_k: int = Field(default_factory=lambda: settings.default_top_k, ge=1, le=100, description="Number of results to return")
     
     model_config = ConfigDict(json_schema_extra={
         "example": {
@@ -98,7 +100,7 @@ class AnswerRequest(BaseModel):
     """답변 생성 요청 (검색 + LLM 생성)"""
     pipeline_id: int = Field(..., description="Pipeline ID for retrieval")
     query: str = Field(..., min_length=1, max_length=10000, description="User question")
-    top_k: int = Field(default=5, ge=1, le=20, description="Number of chunks to retrieve")
+    top_k: int = Field(default_factory=lambda: settings.default_top_k, ge=1, le=20, description="Number of chunks to retrieve")
     system_prompt: Optional[str] = Field(None, description="Custom system prompt (overrides default)")
     llm_config: ModelConfigRequest = Field(..., description="Model configuration")
     
@@ -106,7 +108,7 @@ class AnswerRequest(BaseModel):
         "example": {
             "pipeline_id": 1,
             "query": "What are the main features of the product?",
-            "top_k": 5,
+            "top_k": 10,
             "llm_config": {
                 "type": "claude",
                 "model_name": "claude-3-sonnet-20240229",

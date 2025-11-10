@@ -18,7 +18,7 @@ function RetrieveTab() {
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
   const [selectedPipelineId, setSelectedPipelineId] = useState<number | null>(initialPipelineId || null)
   const [query, setQuery] = useState('')
-  const [topK, setTopK] = useState(5)
+  const [topK, setTopK] = useState(10)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<SearchResponse | null>(null)
   const [error, setError] = useState<string | null>(null)

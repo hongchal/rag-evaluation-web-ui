@@ -111,7 +111,7 @@ function GenerationTab() {
       const response = await api.answer({
         pipeline_id: selectedPipelineId,
         query: userMessage,
-        top_k: 5,
+        top_k: 10,
         system_prompt: customSystemPrompt || undefined,
         llm_config: {
           type: modelConfig.type,
@@ -230,6 +230,11 @@ function GenerationTab() {
   const handleLoadSession = async (sessionId: number) => {
     try {
       const sessionData = await api.getChatSession(sessionId)
+      
+      // Check if pipeline still exists
+      if (!sessionData.pipeline_id) {
+        alert('⚠️ Warning: The pipeline associated with this chat session has been deleted.\n\nYou can view the chat history, but you cannot send new messages.')
+      }
       
       // Update pipeline
       setSelectedPipelineId(sessionData.pipeline_id)
@@ -559,6 +564,15 @@ function GenerationTab() {
 
             {/* Input Area */}
             <div className="border-t border-gray-200 p-4">
+              {/* Show warning if session exists but pipeline was deleted */}
+              {currentSessionId && !selectedPipelineId && (
+                <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    ⚠️ <strong>Pipeline Deleted:</strong> This chat session is read-only because its associated pipeline has been deleted.
+                  </p>
+                </div>
+              )}
+              
               <div className="flex gap-2">
                 <textarea
                   ref={inputRef}
@@ -569,6 +583,8 @@ function GenerationTab() {
                   placeholder={
                     selectedPipelineId
                       ? "Ask a question... (Shift+Enter for new line)"
+                      : currentSessionId
+                      ? "Pipeline deleted - chat is read-only"
                       : "Please select a pipeline first"
                   }
                   rows={3}

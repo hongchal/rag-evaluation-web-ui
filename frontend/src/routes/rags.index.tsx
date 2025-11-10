@@ -141,8 +141,15 @@ function RAGList() {
     try {
       await api.deleteRAG(id)
       await loadRAGs()
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete RAG')
+      alert('RAG configuration deleted successfully!')
+    } catch (err: any) {
+      // Handle 409 Conflict - RAG is in use by pipelines
+      if (err.response?.status === 409) {
+        const message = err.response?.data?.detail || err.message || 'Unknown error'
+        alert(`Cannot delete RAG:\n\n${message}\n\nPlease delete all associated pipelines first.`)
+      } else {
+        alert(err instanceof Error ? err.message : 'Failed to delete RAG')
+      }
     }
   }
 

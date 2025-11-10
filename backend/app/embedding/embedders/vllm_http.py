@@ -21,7 +21,7 @@ class VLLMHTTPEmbedder:
 
     def __init__(
         self,
-        base_url: str = "http://localhost:8000",
+        base_url: str | None = None,
         model_name: str = "Qwen/Qwen2.5-Coder-Instruct-8B",
         embedding_dim: int = 4096,
         timeout: float = 120.0,
@@ -30,11 +30,15 @@ class VLLMHTTPEmbedder:
         Initialize vLLM HTTP embedder.
 
         Args:
-            base_url: vLLM server base URL
+            base_url: vLLM server base URL (defaults to settings.vllm_embedding_url)
+                     빈 문자열('')도 None으로 처리하여 환경변수 기본값 사용
             model_name: Model name/identifier
             embedding_dim: Embedding dimension
             timeout: HTTP request timeout in seconds
         """
+        # Use config default if not provided or empty string
+        if not base_url:  # None or empty string
+            base_url = settings.vllm_embedding_url
         self.base_url = base_url.rstrip("/")
         self.model_name = model_name
         self.embedding_dim = embedding_dim

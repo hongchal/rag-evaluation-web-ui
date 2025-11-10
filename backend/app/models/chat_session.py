@@ -14,7 +14,7 @@ class ChatSession(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False)
-    pipeline_id = Column(Integer, ForeignKey("pipelines.id"), nullable=False)
+    pipeline_id = Column(Integer, ForeignKey("pipelines.id", ondelete="SET NULL"), nullable=True)
     model_type = Column(String(50), nullable=False)  # 'claude' or 'vllm'
     model_name = Column(String(100), nullable=False)
     llm_config = Column(JSON, nullable=True)  # Store full model configuration
@@ -32,7 +32,7 @@ class ChatMessage(Base):
     __tablename__ = "chat_messages"
     
     id = Column(Integer, primary_key=True, index=True)
-    session_id = Column(Integer, ForeignKey("chat_sessions.id"), nullable=False)
+    session_id = Column(Integer, ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False)
     role = Column(String(20), nullable=False)  # 'user' or 'assistant'
     content = Column(Text, nullable=False)
     sources = Column(JSON, nullable=True)  # Retrieved chunks for assistant messages

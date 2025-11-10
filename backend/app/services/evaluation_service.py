@@ -8,7 +8,9 @@ import structlog
 import json
 import time
 import traceback
+import numpy as np
 
+from app.core.config import settings
 from app.models.rag import RAGConfiguration
 from app.models.evaluation import Evaluation, EvaluationResult
 from app.models.evaluation_dataset import EvaluationDataset
@@ -249,7 +251,7 @@ class EvaluationService:
                         search_result = self.query_service.search(
                             pipeline_id=pipeline.id,
                             query=query_text,
-                            top_k=10,
+                            top_k=settings.default_top_k,
                         )
                         
                         total_retrieval_time += search_result.total_time
@@ -437,11 +439,13 @@ class EvaluationService:
         dcg = 0.0
         for i, doc_id in enumerate(retrieved_ids):
             rel = ground_truth.get(doc_id, 0.0)
-            dcg += (2 ** rel - 1) / (i + 2)  # i+2 because i is 0-indexed
+            dcg += (2 ** rel - 1) / np.log2(i + 2)  # i+2 because i is 0-indexed
         
-        # Ideal DCG
-        ideal_rels = sorted(ground_truth.values(), reverse=True)[:k]
-        idcg = sum((2 ** rel - 1) / (i + 2) for i, rel in enumerate(ideal_rels))
+        # Ideal DCG - k개 위치 전체에 대해 계산 (관련 문서를 상위에 배치, 나머지는 0)
+        ideal_rels = sorted(ground_truth.values(), reverse=True)
+        # k개 위치를 모두 채움 (부족하면 0으로)
+        ideal_rels = ideal_rels[:k] + [0.0] * max(0, k - len(ideal_rels))
+        idcg = sum((2 ** rel - 1) / np.log2(i + 2) for i, rel in enumerate(ideal_rels))
         
         metrics["ndcg_at_k"] = dcg / idcg if idcg > 0 else 0.0
         
@@ -473,11 +477,16 @@ class EvaluationService:
             )
         
         # Precision@k - unique 문서 기준
+        # Document-level precision: relevant unique docs / total unique docs retrieved
         unique_relevant_retrieved = sum(
             1 for doc_id in unique_retrieved_ids
             if doc_id in ground_truth and ground_truth[doc_id] > 0
         )
-        metrics["precision_at_k"] = unique_relevant_retrieved / k if k > 0 else 0.0
+        num_unique_retrieved = len(unique_retrieved_ids)
+        metrics["precision_at_k"] = (
+            unique_relevant_retrieved / num_unique_retrieved 
+            if num_unique_retrieved > 0 else 0.0
+        )
         
         # Recall@k - unique 문서 기준
         total_relevant = sum(1 for rel in ground_truth.values() if rel > 0)

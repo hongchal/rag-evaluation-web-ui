@@ -112,7 +112,7 @@ class RAGCreate(RAGBase):
             },
             {
                 "name": "vLLM HTTP Embedding",
-                "description": "Using external vLLM server for embeddings",
+                "description": "Using external vLLM server for embeddings (base_url defaults to env VLLM_EMBEDDING_URL)",
                 "chunking": {
                     "module": "recursive",
                     "params": {
@@ -123,7 +123,6 @@ class RAGCreate(RAGBase):
                 "embedding": {
                     "module": "vllm_http",
                     "params": {
-                        "base_url": "http://localhost:8000",
                         "model_name": "Qwen/Qwen2.5-Coder-Instruct-8B",
                         "embedding_dim": 4096,
                         "timeout": 120.0
@@ -162,7 +161,7 @@ class RAGCreate(RAGBase):
             },
             {
                 "name": "vLLM HTTP Reranking",
-                "description": "Using external vLLM server for reranking",
+                "description": "Using external vLLM server for reranking (base_url defaults to env VLLM_RERANKING_URL)",
                 "chunking": {
                     "module": "recursive",
                     "params": {
@@ -179,7 +178,6 @@ class RAGCreate(RAGBase):
                 "reranking": {
                     "module": "vllm_http",
                     "params": {
-                        "base_url": "http://localhost:8001",
                         "model_name": "BAAI/bge-reranker-v2-m3",
                         "timeout": 120.0,
                         "max_retries": 3
@@ -238,8 +236,7 @@ class RAGUpdate(BaseModel):
                 "name": "Updated RAG Name",
                 "description": "Updated description",
                 "embedding_params": {
-                    "model_name": "Qwen/Qwen3-Embedding-0.6B",
-                    "base_url": "https://lgo25jv8raz7uy-8000.proxy.runpod.net"
+                    "model_name": "Qwen/Qwen3-Embedding-0.6B"
                 }
             }
         ]

@@ -297,10 +297,10 @@ python backend/scripts/dataset_registry.py auto-register
 
 ```bash
 # 1. 등록된 데이터셋 목록 확인
-curl http://localhost:8000/api/datasets
+curl http://localhost:8001/api/datasets
 
 # 2. RAG 설정 생성
-curl -X POST http://localhost:8000/api/rags \
+curl -X POST http://localhost:8001/api/rags \
   -H "Content-Type: application/json" \
   -d '{
     "name": "My RAG",
@@ -310,7 +310,7 @@ curl -X POST http://localhost:8000/api/rags \
   }'
 
 # 3. 평가 실행 (dataset_id는 위에서 확인한 ID 사용)
-curl -X POST http://localhost:8000/api/evaluations \
+curl -X POST http://localhost:8001/api/evaluations \
   -H "Content-Type: application/json" \
   -d '{
     "rag_id": 1,
@@ -319,7 +319,7 @@ curl -X POST http://localhost:8000/api/evaluations \
   }'
 
 # 4. 평가 결과 확인
-curl http://localhost:8000/api/evaluations/1
+curl http://localhost:8001/api/evaluations/1
 ```
 
 ---
